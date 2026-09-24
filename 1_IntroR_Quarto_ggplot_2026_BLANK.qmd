@@ -36,18 +36,29 @@ Outside the chunk you can write anything you want.
 
 Command + Alt + I generates a new "chunk". Try it here! (or Ctrl + Alt + I for PC)
 
+```{r}
+#new code block 
+heehee <- 1
+heehee
+```
+
 When assigning a value to an object, R does not print anything. You can force R to print the value by using parentheses or by typing the object name. Run the lines in the next chunk one at a time to see the difference in the output.
 
 ```{r}
 5
 
-
-
+x <- 5
+(x<-5) #forces it to print
+x # or you just call the variable straight up to rpint 
 ```
 
 ```{r}
 # objects can store more than one value in a one dimensional vector
-my_vector <- c()
+my_vector <- c(1,4,5,6,8)
+#c function stands for combine, saves it as like a list of numbers / vector really 
+my_vector #calling the vector 
+
+my_vector*2 #multiples each number by 2 
 ```
 
 Whole **data frames** can also be assigned to objects. MPG is one that comes built in with the tidyverse package and describes specs of different models of car.
@@ -59,24 +70,27 @@ Remember, **packages** are bundles of code and functions that other people have 
 penguins
 
 # You only need to install a package once on your computer (like buying a book)
-install.packages()
+#install it once on the computer, but reopen it in R every time 
+install.packages("palmerpenguins") #type in name of function in quotes 
 
-install.packages()
+install.packages("rmarkdown")
 
 # Each time you reopen R however, you need to call the packages you're using fresh from the library
-library()
+library(palmerpenguins)  #now you can use these functions 
+
+#only load the packages you need, functions can have the same name across multiple packages 
 
 # Then you can access the data frames and functions stored in the package :) 
-
+penguins #now you can pull up the data and look at it, this is an object that contains a big ol spreadsheet 
 
 ```
 
 **tidyverse** is a very popular package that we will use functions from a lot, and is actually a collection of packages. One of the packages in it is **ggplot2**, which makes it very easy to make very nice looking plots.
 
 ```{r}
-install.packages()
+install.packages("tidyverse") #installing tidyverse package 
 
-library()
+library(tidyverse) #dont use quotes when calling the package 
 
 mpg
 
@@ -89,8 +103,10 @@ But come on, there's time for all that boring stuff later, you said we could mak
 The **fivethirtyeight** package contains data sets written about on the FiveThirtyEight blog. We're going to play with a data set of popular Halloween candies, their characteristics and how popular they are, as assessed in survey data.
 
 ```{r}
-install.packages()
-library()
+install.packages("fivethirtyeight") #installing the package!! 
+library(fivethirtyeight) #loadin it 
+
+fivethirtyeight:: #how to preveiw all the files in the package
 ```
 
 What are some ways we can look at this dataset?
@@ -100,15 +116,18 @@ candy_rankings
 ```
 
 ```{r}
-head()
+head(candy_rankings) #shows first 6 rows of dataset
 ```
 
 ```{r}
-glimpse()
+glimpse(candy_rankings)
+
+#shows you each row and column and the TYPE of data being stored there 
+#types: <lgl> logical 
 ```
 
 ```{r}
-View()
+View(candy_rankings) #opens it in a new view tab all nice 
 ```
 
 ## GGPLOTS: The Basic format
@@ -121,7 +140,7 @@ There are three really basic components you need for any ggplot.
 
 3.  a "geom" to tell it what kind of plot to make (e.g., boxplot, histogram)
 
-These pieces are layered into the plot with + signs.
+These pieces are layered into the plot with + signs. ggplot has its own syntax you need to use
 
 What it looks like when you put those things together:
 
@@ -141,21 +160,33 @@ Let's do it step by step:
 
 ```{r}
 ggplot() # this line makes the space to put the plot, the background
+
+#just says, i want to make a plot! basically just makes an empty space 
 ```
 
 ```{r}
-ggplot() + 
-  aes(x = ) # this says what to put on the axes
+ggplot(candy_rankings) +   #put the file you want to plot data from in ()
+  aes(x = chocolate) # this says what to put on the axes, this is aesthetic 
 ```
 
 ```{r}
-ggplot() # this says what kind of plot to make, in this case, a barplot that automatically did counts of the observations of which candies were chocolate or not chocolate. 
+ggplot(candy_rankings) +
+  aes(x=chocolate)+
+  geom_bar() # this says what kind of plot to make, in this case, a barplot that automatically did counts of the observations of which candies were chocolate or not chocolate. 
+
+#bar plots automatically tally it and takes a count
 ```
 
 ggplots can be defined as an object and recalled later too. This is useful when you are adding more layers and trying things out, or when you're compiling the plots into a multiple plot figure or exporting them.
 
 ```{r}
-chocolate_bar <- 
+chocolate_bar <- ggplot(candy_rankings) +
+  aes(x=chocolate)+
+  geom_bar()
+
+#now we've saved the plot as an object 
+
+chocolate_bar #calling the object 
 
 ```
 
@@ -172,31 +203,42 @@ For example, here we've plotted the win percentage (how often people ranked it i
 We're using the **geom_point()** function to plot this as a scatter plot.
 
 ```{r}
-sweetness <- ggplot() + 
-  aes(x = , y = ) + 
+sweetness <- ggplot(candy_rankings) + 
+  aes(x = sugarpercent, y = winpercent ) +
+  geom_point()   #geompoint gives us a scatterplot, plottin points baby 
 
 
+#remember, you dont have to put anything in the geom_something parenthesis 
+
+
+sweetness #calling the plot 
 
 ```
 
 To add a best-fit regression line, we can use the **geom_smooth()** function. This function has an **argument** that tells it what kind of line we'd like it to fit - in this case we specified "lm", which stands for "linear model".
 
 ```{r}
-sweetness + 
-  geom_smooth()
+sweetness +   #you can call a plot from before and add more arguments by throwing a + at the end
+  geom_smooth(method = "lm")   #method and "lm" adds a best fit line, basic linear model 
 ```
 
 If we'd like to compare sweetness across a categorical variable, like chocolate or not chocolate, we can use a **box and whisker plot**, generated with **geom_boxplot()**. What question is this plot asking?
 
 ```{r}
-sweetness <- ggplot()
+sweetness <- ggplot(candy_rankings)+
+  aes(x=chocolate, y=sugarpercent)+
+  geom_boxplot()  #making a box plot with just sugar and chocolate 
+
 sweetness
 ```
 
 Finally, let's try making a histogram - this only takes an input argument for the x axis.
 
 ```{r}
-sweethist <- ggplot()
+sweethist <- ggplot(candy_rankings)+
+  aes(x=sugarpercent)+
+  geom_histogram()  #histogram only needs an x axis!!!!!! 
+
 sweethist
 ```
 
@@ -210,9 +252,36 @@ More detail here, to not worry about yet. https://ggplot2.tidyverse.org/referenc
 
 1.  Are fruity candies cheaper?
 
+```{r}
+fruityprice <- ggplot(candy_rankings)+ #selecting dataset
+  aes(x=fruity, y=pricepercent)+ #choosing axis
+  geom_boxplot()  #choosing type
+
+fruityprice #fruity candies are cheaper?? 
+```
+
 - Can you make a boxplot that shows the price percent depending on fruity?
 
 2.  Are sweeter candies more expensive? Do the candies with higher sugarpercent have higher winpercent? Plot this relationship.
+
+```{r}
+sweetprice <- ggplot(candy_rankings)+
+  aes(x=sugarpercent, y =pricepercent)+
+  geom_point() +#making it a point plot
+  geom_smooth(method = "lm")  #making it show the linear relationship
+
+sweetprice  #sweeter candies are a little more expensive!! 
+
+```
+
+```{r}
+sugarwin <- ggplot(candy_rankings)+  #making the plot
+  aes(x=sugarpercent, y=winpercent)+
+  geom_point()+
+  geom_smooth(method="lm") #adding linear relationship
+
+sugarwin #calling the plot, sweeter candies also kinda win more 
+```
 
 ## PRETTY TIME!
 
