@@ -324,7 +324,7 @@ ggplot(candy_rankings) +
   geom_density()
 ```
 
-### Dot plot
+### Dot plot - good for counts
 
 ```{r}
 ggplot(candy_rankings) + 
@@ -334,7 +334,7 @@ ggplot(candy_rankings) +
 
 Note the error message - try adding the argument "binwidth = 3" to the geom_dotplot() line.
 
-### Box and whisker plot
+### Box and whisker plot - good for initial observations
 
 ```{r}
 ggplot(candy_rankings) +
@@ -369,8 +369,8 @@ ggplot(candy_rankings) +
   aes(x = pricepercent, 
       y = winpercent) +
   geom_point() +
-  geom_smooth(method = "lm", 
-              se = FALSE)
+  geom_smooth(method = "lm", #method sets what method to use- linear
+              se = FALSE)    #se to false turns off gray shading
 ```
 
 Multiple plots in multiple panes - what happens when you move the . and \~ next to chocolate, like in the commented out line?
@@ -464,6 +464,9 @@ Q1: Make a line graph that depicts the number of visitors per year for only Yose
 
 ```{r}
 
+ggplot(subset(df, ))+ 
+  aes(x = YearRaw, y = Visitors, fill = )+
+  geom_line()
 ```
 
 Q2: Make a boxplot that compares visitation rates in all parks in 1980 to present.

@@ -16,7 +16,7 @@ We started out looking at an R Script in our first activity, but I would like yo
 
 In Quarto, code goes in chunks, like this:
 
-```{r}
+```{r FIRST CHUNK}
 
 #anything in the gray box will get run, so if you put comments in here, they need # comment. 
 
@@ -39,7 +39,7 @@ Command + Alt + I generates a new "chunk". Try it here! (or Ctrl + Alt + I for P
 ```{r}
 #new code block 
 heehee <- 1
-heehee
+heehee 
 ```
 
 When assigning a value to an object, R does not print anything. You can force R to print the value by using parentheses or by typing the object name. Run the lines in the next chunk one at a time to see the difference in the output.
@@ -115,18 +115,18 @@ What are some ways we can look at this dataset?
 candy_rankings
 ```
 
-```{r}
+```{r head_function}
 head(candy_rankings) #shows first 6 rows of dataset
 ```
 
-```{r}
+```{r lgimpse_function}
 glimpse(candy_rankings)
 
 #shows you each row and column and the TYPE of data being stored there 
 #types: <lgl> logical 
 ```
 
-```{r}
+```{r view_function}
 View(candy_rankings) #opens it in a new view tab all nice 
 ```
 
@@ -180,9 +180,9 @@ ggplot(candy_rankings) +
 ggplots can be defined as an object and recalled later too. This is useful when you are adding more layers and trying things out, or when you're compiling the plots into a multiple plot figure or exporting them.
 
 ```{r}
-chocolate_bar <- ggplot(candy_rankings) +
-  aes(x=chocolate)+
-  geom_bar()
+chocolate_bar = ggplot(candy_rankings) + #creates the plot to plot         candy_rankings
+  aes(x=chocolate)+ #setting aesthetic, chocolate on x axis 
+  geom_bar()  #setting plot type - bar plot
 
 #now we've saved the plot as an object 
 
@@ -192,7 +192,7 @@ chocolate_bar #calling the object
 
 Challenge: In the chunk below, plot a different variable, [without copying and pasting the script you wrote before]{.underline}.
 
-```{r}
+```{r DO THIS!}
 
 ```
 
@@ -225,7 +225,7 @@ sweetness +   #you can call a plot from before and add more arguments by throwin
 If we'd like to compare sweetness across a categorical variable, like chocolate or not chocolate, we can use a **box and whisker plot**, generated with **geom_boxplot()**. What question is this plot asking?
 
 ```{r}
-sweetness <- ggplot(candy_rankings)+
+sweetness <- ggplot(candy_rankings)+ #setting up plot for                  candy_rankings
   aes(x=chocolate, y=sugarpercent)+
   geom_boxplot()  #making a box plot with just sugar and chocolate 
 
@@ -235,8 +235,8 @@ sweetness
 Finally, let's try making a histogram - this only takes an input argument for the x axis.
 
 ```{r}
-sweethist <- ggplot(candy_rankings)+
-  aes(x=sugarpercent)+
+sweethist <- ggplot(candy_rankings)+ #setting up to plot                 candy_rankings
+  aes(x=sugarpercent)+ #aesthetic, putting sugarpercent on x axis
   geom_histogram()  #histogram only needs an x axis!!!!!! 
 
 sweethist
@@ -292,23 +292,31 @@ Reference: bit.ly/colors-r
 You can change the color in the geom argument. Test out how it works on different geoms!
 
 ```{r}
-ggplot() +  
-  aes(x = ) + 
-  geom_bar(color = '', fill = ) 
+ggplot(candy_rankings) +  #candy_rankings data plotting   
+  aes(x = chocolate) +   #putting chocolate on x axis 
+  geom_bar(color = 'red', fill = 'orange' )  #setting up bar plot
+  #can put name or hexcode for color names  
+  #color = outline color
+  #fill = filling in rectangle with this color 
 ```
 
 If you want the color to reflect another variable, for example, if there is fruit in the candy too, then you make it a **mapped aesthetic**, or one that refers to some data to assign a visual. In this case, you place the **color** or **fill** argument **inside aes().**
 
 ```{r}
-ggplot() +  
-  aes(x = , fill = ) + 
-  geom_bar(position = ) 
+ggplot(candy_rankings) +  
+  aes(x = chocolate , fill = fruity ) + #assigns color to the fruity variable, the fruitiness of the candy determines what color it shows up as 
+  geom_bar(position = position_dodge()) #puts bars next to each other instead of stacked
+#parenthesis after words tells R that its a funciton, otherwise it will think it's an object 
+#further arguments can be put into the position_dodge parenthesis 
 ```
 
 ### Challenge question: what proportion of candies have BOTH chocolate and caramel?
 
-```{r}
-
+```{r COME BACK TO THIS}
+ggplot(candy_rankings)+ #setting up plot
+  aes(x = chocolate, fill = caramel) + #chocolate on x axis, filled according to caramel 
+  geom_bar(position = 'fill') #fill argument to make it a stacked bar plot showing a portion of the whole
+#FILL NEEDS TO HAVE QUOTES !!!!!!!! 
 ```
 
 ### Shapes
@@ -316,42 +324,49 @@ ggplot() +
 Working on a scatterplot and want the points to be different shapes? Easy too!
 
 ```{r}
-ggplot() +
-  aes(x = ,
-      y = ) +
-  geom_point()
+ggplot(candy_rankings) +
+  aes(x = pricepercent,
+      y = winpercent) +
+  geom_point(shape = 2)  #assigning different shape to points 
+#different numbers assigned to different shapes- look up online 
 ```
 
 Similarly, you can **map** shape to a variable in the aes() function.
 
 ```{r}
-ggplot() +
-  aes() +
+ggplot(candy_rankings) +
+  aes(x = pricepercent, y = winpercent, shape = chocolate ) + #in the aesthtic argument, r pulls a variable. if you put it in the plotting function, then it just makes all points a shape without doing anything
+  geom_point()
   
+
+#now chocolate ones are triangles and non chocolates are circles 
 ```
 
 ### Labels
 
 Pretty self-explanatory here. labs() are added separately from the other plot parameters.
 
-```{r}
-ggplot() +
-  aes(
-  labs(x = 
-       y =
-       title = ,
-       subtitle = 
-       caption =
+```{r COME BACK TO THIS}
+ggplot(candy_rankings) +
+  aes( x = sugarpercent, y = winpercent)+
+  geom_point() + #DONT FORGET PLUS SIGN HERE!!!! 
+  labs(x = "Sugar Percen",   #labs sets up labels 
+       y = "Win Percentage", 
+       title = "Relationship between the dependent and indepedent variable", 
+       subtitle = "for Halloween candies", 
+       caption = "based on an online survey by fivethirtyeight" )
 
 ```
 
 ### X and Y axis limits
 
 ```{r}
-ggplot() +
-  aes(x = , 
-      y = =) +
+ggplot(candy_rankings) +
+  aes(x = sugarpercent, 
+      y = winpercent) +
   geom_point() +
+  xlim(0, 1.5) +   #limits the x axis 
+  ylim (0, 100)    #limits the y axis 
 
 ```
 
