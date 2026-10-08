@@ -21,13 +21,16 @@ There are two ways to access functions and objects from packages. First, the way
 Load packages:
 
 ```{r load packages}
-install.packages("")
-install.packages()
-install.packages()
+install.packages("gapminder")
+install.packages("titanic")
+install.packages("knitr")
+#^^^ this installs the packages, but you need to use the library funciton in order to actually pull the packages out that you want to use 
+#whenever you close R, the book "closes" and you have to reload the packages in 
 
+library(tidyverse) #remember, you dont have to use quotes when calling a package in the library function 
+library(gapminder)
 
-library()
-library()
+#you dont want to load in too many functions at once, since they have the same name and might conflict
 ```
 
 Another way, if you only have one function/object you want from a particular package, is to use the `::` operator. The package still needs to be installed, but this way you minimize the risk of conflicting packages and run a little more efficiently.
@@ -36,8 +39,11 @@ This code will load a data set from the `titanic` package for us, without loadin
 
 ```{r package part}
 # install.packages("titanic")
-titanic <- titanic::
-original_titanic <- 
+#if you only want to take a specific part of a package: 
+titanic <- titanic::titanic_train  #this takes only the titanic_train part from the titatnic package, and assigns it to the object titanic 
+original_titanic <- titanic::titanic_train
+
+original_titanic #lookin at it
 ```
 
 ### Importing Data
@@ -45,6 +51,8 @@ original_titanic <-
 #### From a .csv file, from Excel or other spreadsheet software
 
 My favorite way to import data is to convert my spreadsheets to CSV (in excel or Google Sheets) and import the data using the `read_csv()` function from the *`readr`* package. The benefit of this method is that its very reproducible - data in CSV format is very stable and portable across different platforms, and it will always import the same way for anyone who uses your code.
+
+- csv files are more reliable than excel files, since excel files can change from version to version. csv does not change
 
 **"Assigning" an object with `<-`**
 
@@ -55,7 +63,9 @@ The readr package also handles other file types. When it imports your data, it w
 ```{r importing}
 #install.packages("readr")
 library()
-CDM2 <- read_csv()
+CDM2 <- read_csv("Demo Data Files/CDM_data.csv")  #here it is going to look for a file in your working directory, put the path here
+  #demo data files folder is in the right hand navigation pane too, you can open the folder there and see whats inside 
+  #you can also copy folder path to clipboard from the same pane
 CDM2
 ```
 
@@ -66,8 +76,10 @@ These two functions also import the data into two slightly different formats. `r
 If someone has given you a *.Rdata* file, this is an R file type that contains multiple data objects so that you can easily import them and use them without having to rename all the objects. Check the "Environment" pane in the upper right - you'll see a whole bunch of new objects. Try viewing a few of them.
 
 ```{r}
-load()
-head()
+load("Demo Data Files/S4E2e.Rdata") #loads in a bunch of new variables, you can see in the environment 
+head(ps)  #now you can call up objects from this file really quickly
+
+#this data below is a MATRIX, the rows and columns are treated as a grid- treated differently than a tibble or dataframe 
 ```
 
 You'll notice that many of them don't look the same as when you viewed your imported .csv above. When you use the `read_csv()` function, it will automatically parse it as a data frame, in which the columns are all variables and the rows are observations.
@@ -75,10 +87,12 @@ You'll notice that many of them don't look the same as when you viewed your impo
 The objects in this *.Rdata* file are stored as matrices - it stores the data in a grid, but doesn't assume that the columns are variables. This is easy to convert to a tibble or a data frame:
 
 ```{r}
-ps_dataframe <- 
+ps_dataframe <- as.data.frame(ps) #reformates the matrix data into a dataframe format, this makes it nicer to look at
 
+ps_dataframe
 
-sward2_tibble <- 
+sward2_tibble <- as_tibble(sward2)  #converts dataframe to tibble, tibbles are more modern and new than dataframes 
+sward2_tibble
 
 ```
 
@@ -89,8 +103,8 @@ Finally, if you're importing data from a data set that has been published for us
 Here is the information page about what data sets are contained in the fivethirtyeight package. https://www.rdocumentation.org/packages/fivethirtyeight/versions/0.6.1 This page lists the names of the data sets, so that you can do analyses on them as well.
 
 ```{r}
-#install.packages("fivethirtyeight")
-library()
+install.packages("fivethirtyeight") #installing fivethirtyeight packaage 
+library(fivethirtyeight)            #calling it so we can use it 
 
 ```
 
@@ -107,19 +121,19 @@ candy_rankings
 **names()** : Only the column names:
 
 ```{r}
-names()
+names(candy_rankings)  #shows only the column names
 ```
 
 **glimpse()** : Column names, data types, and a preview of the data:
 
 ```{r}
-glimpse()
+glimpse(candy_rankings) #gives you column names, data type stored in that column, and a preview of the data 
 ```
 
 While we all love View() as a function for looking at our data in nice spreadsheet form, it does get annoying in a Quarto file (anything that makes a pop-up window will), so it's best to only use that in the console or to comment it out whenever possible.
 
 ```{r}
-# View(candy_rankings)
+View(candy_rankings) #this is the one that pops up a seperate spreadsheet!!! 
 ```
 
 For displaying finished data or tables in a report, another way (that makes very nice tables with less spaces) is **kable()**, from the knitr package. This format is easier to copy and paste and looks nicer in your knitted output file.
@@ -128,7 +142,8 @@ Notice how we used the **kable()** function from the knitr package using the dou
 
 ```{r}
 # library(knitr)
-knitr::
+knitr::kable(head(CDM2))  #we're calling only the kable function from the knitr package
+#creates a nicer looking table to look at 
 ```
 
 The data we'll use today has details about the passengers on the Titanic.
@@ -143,9 +158,9 @@ original_titanic <-
 Let's look at the data. What variables do we have to work with? What do you notice about the data that might be easier to read, type, interpret, or graph in some other format?
 
 ```{r}
-glimpse()
+glimpse(titanic) #previews data 
 
-View()
+View(titanic)           #opens seperate window
 
 ```
 
@@ -157,7 +172,7 @@ We are going to focus on five major functions for data manipulation in today's e
 
 2.  **arrange() -** for reordering the observations by value
 
-3.  **select() and its buddy, rename() -** for creating a data frame with only certain columns, or changing column names
+3.  **select()** and its buddy, **rename() -** for creating a data frame with only certain columns, or changing column names
 
 4.  **mutate() -** for adding new columns
 
@@ -175,24 +190,35 @@ and finally, the one that makes them all the MOST useful:
 
 *newdataframe \<- function( data, argument1 = Var1, argument2 = Var2, etc.)*
 
+- functions are always followed by parenthesis, if something is followed by () then its a function
+
 #### Pipes: the easy way to string together multiple functions
 
 `|>` is a pipe. (vertical bar, on the same key as the backslash `\`.
 
-You can think of it as substituting for the words "**and then**". It passes the output of everything before it into the function after the pipe as the data or input argument. This will make more sense in practice! Here is an example:
+You can think of it as substituting for the words "**and then**". It passes the output of everything before it into the function after the pipe as the data or input argument. This will make more sense in practice!
+
+- this lets you do multiple functions at once
+
+Here is an example:
 
 ```{r}
 # say you want to create a vector of numbers, then take the average of those numbers, then round to the nearest whole number. One way to do this is to nest the functions, so that each is applied to the output of the one it contains: 
 
-round()
+c(2,2,4)  #concatenate, first function
+
+round(mean(c(2,2,4))) #<-- you could do it this way, nesting them into each other
 
 # this is not especially intuitive - it looks like the first thing that R will do is round, when mathematically that can't happen first. 
 
 # with pipes, the same computation becomes:
 
 # first create the vector using c() "concatenate"
-c() |> # "and then" take the mean
-   |> # "and then" round the result
+c(2,2,4) |> # "and then" take the mean
+  mean()|> # "and then" round the result
+  round()  
+
+#you have to tab the next line after the pipe!!!! 
   
 ```
 
@@ -208,21 +234,23 @@ Logical operators are symbols that join values in a statement. These include AND
 
 ```{r}
 # an object
-
+x = 5
 
 # Is x less than 10? 
-
+x < 10 #you can just straight up put a logical operator in to test something real quick 
 
 ```
 
 ```{r}
 # Is x greater than 6? 
-
+x > 6
 ```
 
 because "=" is used so often in other situations in R (within arguments, to assign objects etc.), for conditional statements like "Does this exactly equal that", we use "`==`" to test.
 
 ```{r}
+
+x == 5 #checking to see if x equals 5 
 
 ```
 
@@ -247,15 +275,23 @@ The `filter()` function turns this logical statement into a **conditional statem
 Say we want to only look at data about the survivors of the Titanic. All we need to do is put in our data, our argument, which here is the variable on which we want to sort, plus the condition.
 
 ```{r}
-titanic |>
-  filter()
+titanic |>  #using a pipe in order to add another function! 
+  filter(Survived == TRUE) #now we are only showing the rows of who survived, we've cut the dataframe down to only 342 rows now 
+
+#boolean value are similar to python, you can just type them straight up 
 ```
 
 What else might be interesting to filter by?
 
 ```{r}
 titanic |> 
-  filter()
+  filter(Sex == "female") #showing only the rows that were women, female is in quotes since its a character column 
+
+titanic |> 
+  filter(Sex =="female" & Survived == TRUE) #here we look for two conditions to be true 
+
+titanic |> 
+  filter (Pclass == 1 | Pclass == 2) #filters for only 1st or 2nd class passengers 
 ```
 
 ### 2. `arrange()`
@@ -266,20 +302,21 @@ What if we want to sort the passengers from youngest to oldest?
 
 ```{r}
 titanic |> 
-  
+  arrange(Age)  #now the data frame is arranged by age, youngets to oldest 
 ```
 
 How about the other way around?
 
 ```{r}
 titanic |> 
-  
+  arrange(-Age)  #add minus sign to reverse the age 
 ```
 
 Can you sort the data frame by `Fare`, from most to least expensive?
 
 ```{r}
-
+titanic |> 
+  arrange(-Fare)  #remember, minus sign to make it go from most to least 
 ```
 
 ### 3. `select()`
@@ -290,14 +327,17 @@ This is easy too! There are too many columns in this dataframe and its confusing
 
 ```{r}
 titanic |>
-  select()
+  select(Fare, Age) #same dataframe, but now it only include these two columns 
 ```
 
 The - sign reverses it, signaling to keep all the columns EXCEPT Fare and Age.
 
 ```{r}
 titanic |>
- 
+ select(-Fare, -Age) |> #dataframe with every column EXCEPT Fare and Age 
+  # minus sign needs to be in front of BOTH column names !!!!
+  names() #looking at all the column names 
+
 
 
  
@@ -307,6 +347,8 @@ Select can also choose columns that meet certain conditions - this isn't a good 
 
 ```{r eval=FALSE}
 
+titanic |> 
+  select(starts_with("P")) #only selects columns that start with P
 ```
 
 #### Combining functions using pipes
@@ -315,8 +357,8 @@ Here's where the beauty of pipes comes in. Want to make a data frame that has on
 
 ```{r}
 titanic |> 
-  filter(Survived == ) |> 
-  select()
+  filter(Survived == TRUE) |>  #filtering for only survivors 
+  select(Fare, Age)            #putting the survivors through the Fare and Age filter
 ```
 
 Can we make a data frame that has `Fare` and `Age` of passengers in second and third class?
@@ -325,13 +367,13 @@ To do this, you will need to use more than one conditional statement, which are 
 
 ```{r eval = FALSE}
 titanic |>
-  filter(Pclass == | Pclass == ) |> 
-  select()
+  filter(Pclass == 3 | Pclass == 2 ) |>  #selectes class
+  select(Pclass, Fare, Age) #selects what columns we want 
 
 # OR
 titanic |>
-  filter() |> 
-  select()
+  filter(Pclass != 1) |>  #filtering for 2nd or 3rd class, by excluding the 1st class - we can do this since theres only 3 classes 
+  select(Pclass, Fare, Age)
 ```
 
 ### 4. `mutate()`
@@ -343,20 +385,26 @@ Perhaps we want to know how old the passengers would be if they were alive today
 The format for mutate is: `mutate(data, newcolumn_name = computation)`
 
 ```{r}
-titanic <-  |>
-  mutate()
+titanic <- original_titanic |> #if we assigned titanic to titanic again, it would have replaced the file we were working with before. this way, we can still keep a copy of the original titanic 
+  mutate(age_new =  Age + 111) #adds a column named "age_new" at the very right of the dataframe 
 # remember to assign!
 
+titanic
 ```
 
 Now, once we've assigned it to the `titanic` object, that object is changed and has that new column forever! Our old dataframe is gone. [Be careful when assigning your new data frame to the old name!]{.underline} Better to do something like this, where you have your raw data be "titanic-raw" or "original_titanic" just in case you mess it up.
 
 ```{r}
-titanic <-  |> 
-  mutate() |> 
-  mutate() |> 
-  mutate() |> 
-  mutate()
+#BE CAREFUL ABOUT DATAFRAME NAMES WHEN ASSIGNING THEM TO A NEW DATAFRAME!! 
+
+titanic <- original_titanic |>  #basically resetting the titanic object back to the     og data  
+  mutate(Survived = as.logical(Survived)) |>  #converts the survived column into a     logical type data, now its TRUE and FALSE instead of 0 and 1 
+  mutate(Pclass = as.factor(Pclass)) |>       #converting Pclass to factor data
+  mutate(Embarked = as.factor(Embarked))   #converting Embarked to factor data
+
+#factor data type is basically telling the computer that there are distinct classes within the data
+
+glimpse(titanic) #now we can see the changed data types 
 ```
 
 #### `rename()`
@@ -367,13 +415,18 @@ titanic <-  |>
 
 ```{r eval = FALSE}
 titanic |> 
-  rename() 
+  rename(passenger_id = PassengerId)  #renames the PassengerId column to                 passenger_id, flow of the function works backwards  
+
 ```
 
 Can you write a line that renames `passenger_id` and also selects only `Survived`, `Fare`, `Age`, and `Pclass`?
 
 ```{r eval=FALSE}
-titanic |> 
+titanic |>
+  rename(pass_id = PassengerId) |> 
+  select(Survived, Fare, Age, Pclass)
+
+#dont recall titatnic in order to see this new dataframe, these functions are making a new dataframe that isnt really saved or assigned to an object 
 
 ```
 
@@ -390,11 +443,13 @@ Want to rekey some of the values themselves, based on certain conditions? `case_
 # the last line tells R to keep any other values the same. 
 
 titanic |> 
-  mutate(
-    Embarked == 
-    Embarked 
+  mutate(Embarked = case_when(
+    Embarked == "C" ~ "Cherbourg", #replaces every C with Cherbourg 
+    Embarked == "Q" ~ "Queenstown",  #remember comma after each new value 
+    Embarked == "S" ~ "Southhampton" 
    
   ))
+
 ```
 
 ### 5. `count()`
@@ -405,7 +460,7 @@ What is generated when you run this line of code?
 
 ```{r}
 titanic |>
-  count()
+  count(Survived)  #gives us a summary table on how many people survived / died
 ```
 
 We can make it even more useful by combining it with `mutate`:
@@ -413,8 +468,9 @@ We can make it even more useful by combining it with `mutate`:
 ```{r}
 #makes a percentage! neat.
 titanic |> 
- |> 
-  mutate()
+ count (Survived) |>  #counts all the survivors
+  mutate(prop = n/sum(n)) #creates a new column of the proportion of those who survived, by dividing each value by the total
+#we put n here since thats the name of the colum nin our summary table 
 ```
 
 It can count based on multiple conditions too!
@@ -422,7 +478,15 @@ It can count based on multiple conditions too!
 ```{r}
 # multiple classes
 titanic |> 
-  count()
+  count(Survived, Pclass)
+
+#now, did you survive AND what class were you in? 
+
+titanic |> 
+  count(Pclass, Survived) |>  
+  mutate(prop = (n/sum(n))*100) #create new column of proportion of who survived and who didnt, divided by class 
+
+#count order determines what column shows up first in your summary table 
 ```
 
 ### 6. `summarize()`
@@ -431,7 +495,7 @@ titanic |>
 
 ```{r}
 titanic |> 
-  summarize()
+  summarize(mean(Fare))
 
 ```
 
@@ -439,12 +503,12 @@ It can do as many summaries as you want! And name the columns that it goes into.
 
 ```{r eval = FALSE}
 titanic |> 
-  summarize(mean_fare =, 
-            sd_fare =, 
-            var_fare = , 
-            minfare = , 
-            maxfare = , 
-            count = 
+  summarize(mean_fare = mean(Fare), 
+            sd_fare = sd(Fare), 
+            var_fare = var(Fare), 
+            minfare = min(Fare), 
+            maxfare = max(Fare), 
+            count = n()) #when it comes to count, you cant use the count function because you're in the summarize function, just say n
 
 ```
 
@@ -454,8 +518,13 @@ Notice how above it calculated one mean fare for the whole table. What if you wa
 
 ```{r eval = FALSE}
 titanic |> 
-  group_by() |> 
-  summarize()
+  group_by(Pclass, Embarked) |>  #now the table will be grouped by class, and still show all of these great summary stats. with the embarked, it will combine these into each combination of these variables- then give you the stats for each combo
+  summarize(mean_fare = mean(Fare), 
+            sd_fare = sd(Fare), 
+            var_fare = var(Fare), 
+            minfare = min(Fare), 
+            maxfare = max(Fare), 
+            count = n())
 ```
 
 ### Bonus functions
@@ -467,10 +536,14 @@ titanic |>
 **Pivoting to move from wide to long data:**
 
 ```{r}
-gapminder_wide <- 
-   |> 
-  pivot_wider()
 
+#pivot helps you convert from wide to long data
+gapminder_wide <-
+   gapminder|>
+  pivot_wider(id_cols = country, names_from = year, values_from = lifeExp)
+
+
+gapminder_wide  #this dataframe now gives us a year per column, easier to understand and visualize
 ```
 
 **Pivoting back from long to wide data:**
@@ -478,9 +551,11 @@ gapminder_wide <-
 ```{r}
 gapminder_long <- 
   gapminder_wide |> 
-  pivot_longer(names_to = ,
-               values_to = ,
-               cols = )
+  pivot_longer(names_to = "Year",
+               values_to = "Life_Expectancy",
+               cols = 2:13 ) #this is columsn 2-13 
+
+gapminder_long
 ```
 
 ### `bind_rows()` and `bind_cols()`
@@ -488,24 +563,32 @@ gapminder_long <-
 `bind_rows()` and `bind_cols()` are two functions you can use to add one data frame to another; I like to think of it as stapling one onto the other - it just tacks it to the bottom. Important: they don't work if they don't have a matching number of columns or rows so that they can align nicely.
 
 ```{r}
+#thes find functions do not do matching based on data values!!! it just kind sticks them on 
 fake_data_1 <- tibble(
-  Col1 = 
-  Col2 =  
-  Col3 = )
+  Col1 = seq(1:10),  #creates a sequence of 1 through 10 
+  Col2 =  rep(5, 10), #repeats the number 5, 10 times 
+  Col3 = rep(c("alpha", "beta"), 5) #repeats alpha and beta 5 times, for a total of 10 
 )
 
 fake_data_2 <- tibble(
+  Col1 = seq(11:25),  #creates a sequence of 1 through 10 
+  Col2 =  rep(10, 15), #repeats the number 5, 10 times 
+  Col3 = rep(c("gamma", "delta", "epsilon"), 5)
   )
 
-nrow()
+nrow(fake_data_1) #fake data 1 has 10 rows
+nrow(fake_data_2) #fake data 2 has 15 rows 
 
   
-bind_rows() |> 
+bind_rows(fake_data_1, fake_data_2) #now our final dataframe has 25 rows, they've just been stapled onto the end
+
+#bind columns would not work here since they have different lengths! one is tall and one is short 
 
 
 ### bind_cols()
 
-color_vector <- c("pink", "blue", "aquamarine",  )
+#making a new column that is the same length in order to slap it onto fake data 1 
+color_vector <- c("pink", "blue", "aquamarine", "tan", "yellow", "coral", "purple", "deepskyblue", "red", "green" )
 
-bind_cols(, Col4 =)
+bind_cols(fake_data_1, Col4 = color_vector) #adding the color vector column onto the end of fake_data_1 !!! 
 ```
