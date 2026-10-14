@@ -24,8 +24,8 @@ These are NOT mean and standard deviation!
 
 ### Summary Statistics for Continuous Variables
 
-```{r}
-# This chunk will not run
+```{r, summary_stat_functions}
+# This chunk will not run, list of functions!!!!! 
 mean() : Mean
 min() : minimum value
 max() : maximum value
@@ -50,32 +50,49 @@ library(tidyverse)
 ### Example using summarize to make a nice summary table of some old owl limpet data:
 
 ```{r}
-Size_summary <-  %>% 
-  group_by() 
-  summarize(), # mean 
-            sd_size = ,  # standard deviation
-            n = , # count
-            se_size =  # standard error
-  mutate_at(), # bonus line to reduce digits
-            .funs = ) 
+Size_summary <- CCdata_tidy |>  
+  group_by(Impact, Year, Season, Survey_Date) |>  #grouping for everything except                       size  
+  summarize(
+           mean_size = mean(Size, na.rm = TRUE),  # calculates mean, na.rm remvoes                    the NAs and makes sure the calculation goes through 
+            sd_size = sd(Size, na.rm = TRUE),     # standard deviation
+            n = n(),                              # count
+            se_size = sd_size/sqrt(n)) |>         # standard error
+  
+  
+  mutate_at(vars(mean_size, sd_size, se_size),     # bonus line to reduce digits
+            .funs = round, 2)
 
-Size_summary %>% 
-  select() 
-  knitr
+Size_summary |>                                   #now we're putting the summary                         stats, which we defined before into a new set of functions 
+  select( -Survey_Date) |>                        #selecting everything EXCEPT                                                      survey date 
+  knitr::kable()                                  #makes nice looking table with                                                    knitr
+
 ```
 
 #### Example creating a plot from that summary data:
 
 ```{r}
-Size_summary  + 
-  aes(x = , y = , fill = ) + 
-#  geom_point(position = position_dodge(0.9)) +
-geom_col() +
-  geom_errorbar(aes(, 
-                    ), 
-                position = , 
-                width = 
-                )
+#turning summary table into plot: 
+Size_summary |> 
+  ggplot() +       #piping into ggplot, leave it blank 
+  aes(x = as.factor(Survey_Date) , y = mean_size , fill = Impact) +  #setting up                          axis and color distinctions  
+# geom_point(position = position_dodge(0.9)) 
+  geom_col(position = position_dodge())  +         #column plot with position dodge
+  
+  geom_errorbar(aes (ymin = mean_size - se_size, ymax = mean_size + se_size),         position = position_dodge(0.9), width = 0.5) #sets up error bar parameters, needs a new set of aesthetics 
+
+#ymin is the mean size minus the standard erorr size, error bar that goes down --> YMIN!!! 
+#ymax is topmost error bar, this is the mean plus the standard error size 
+#width in error bar is self explanatory 
+#set position dodge to 0.9 when in doubt 
+```
+
+```{r}
+Size_summary |> 
+  ggplot() +       #piping into ggplot, leave it blank 
+  aes(x = as.factor(Survey_Date) , y = mean_size , color = Impact) +  #setting up                          axis and color distinctions, distinguishing by impact level                         of site   
+  geom_point(position = position_dodge(0.9)) + 
+
+  geom_errorbar(aes (ymin = mean_size - se_size, ymax = mean_size + se_size),         position = position_dodge(0.9), width = 0.5)
 ```
 
 #### Beyond the summary stats: frequency distributions
@@ -83,11 +100,19 @@ geom_col() +
 Boiling it down to the mean and standard deviation really loses a lot of information though. It's always good to look at the histogram/distribution to get a better sense of what's going on. Let's look back at just that one histogram.
 
 ```{r}
-CC_sp19 <-
-  filter(Season ==  Year == Impact == )
+CC_sp19 <- CCdata_tidy |> 
+  filter(Season == "Spring" & Year == 2019 & Impact == "High" ) #filtering for only the high impact, in 2019, in spring. ands are to meet all 3 conditions 
 
-CC_sp19 %>%
-  
+CC_sp19 |> 
+  ggplot() + 
+  aes (x = Size) + 
+  geom_density()
+  # geom_histogram(aes(y = after_stat(density))) #instead of having a count on the y axis, its now a probability density!! the area underneath all of these bars is now equal to 1 
+
+#coord_flip  --> flips the axes 
+
+
+#there is a minimum cutoff for limpet size -- data artifact! this makes it so that the distribution is skewed towards smaller sizes, even though it could be expected to be symmetrical 
 ```
 
 What observations can we make about the distribution of this data?
@@ -104,6 +129,8 @@ What observations can we make about the distribution of this data?
 
   - long-lived vs. short-lived animals
 
+    - owl limpets are long-lived, so this looks right with more older individuals
+
   - r vs. K-selected
 
   - growing vs. shrinking populations?
@@ -111,8 +138,17 @@ What observations can we make about the distribution of this data?
 - What factors apart from the population itself may have influenced this pattern? Let's look at the histograms for all the dates and sites:
 
 ```{r many histograms}
-CCdata_tidy %>%
+CCdata_tidy |> 
   ggplot() +
+  aes(x = Size) + 
+  geom_histogram() + 
+  facet_wrap(Survey_Date ~ Impact) 
+
+#remember, facet wraps takes each possible combo of the selected variables 
+
+
+
+
   
 
 
@@ -137,11 +173,12 @@ How do we assess?
 Visual:
 
 ```{r}
-CC_sp19 <-  %>%
-  filter()
 
-CC_sp19 %>%
+
+CC_sp19 |> 
   ggplot() +
+  aes(x = Size) + 
+  geom_histogram(aes(y = after_stat(density)))
   
 ```
 
@@ -149,10 +186,10 @@ CC_sp19 %>%
 
 ```{r}
 # here's one function from Base R
-qqnorm()
+qqnorm(CC_sp19 $ Size)  #put data into function, $ selects only one column 
 
 # And another from the car package that has 95% confidence intervals
-car::qqPlot()
+car::qqPlot(CC_sp19 $ Size)  #includes 95% confidence intervals with the car package 
 ```
 
 Next week, we will start learning about statistical tests which can quantify and assign a probability to how closely your data fits a particular type of distribution.
