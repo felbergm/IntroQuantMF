@@ -74,8 +74,8 @@ Make a table using `select()` and `distinct()` to only show the length of each t
 
 ```{r}
 TransectLengths <- SizeData_2022_2025 |>  #taking our data with no 15mm and putting                                           it thru some more functions
-  select(transect_length_m, site, transect_num) |>
-  distinct()
+  select(transect_length_m, site, transect_num) |>  #selecting only the columns we want 
+  distinct()  #keeps only unique rows in the data! 
 
 
 TransectLengths
@@ -111,28 +111,43 @@ ANSWER: Our methods have been a little inconsistent. We used different methods a
 
 Graph 1:
 
-```{# {r}
-SizeData_2022_2025 |>
+```{r}
+
+#boxplot of Tresure Cove shell lengths, split by year
+
+SizeData_2022_2025 |> filter(site == "Treasure Cove") |>  #filtering for only treasure cove rows 
+  ggplot() +  aes(x = year, y = shell_length_mm) +  #selecting x y axis 
+  geom_boxplot(aes(color = year)) +       #box plot colored by year, to be cute
+  labs(y = "Limpet Shell Length (mm)", title = "Limpet Shell Length at Treasure Cove, Two Years Later")
 
 
 ```
 
-This shows:
+This shows: This graph specifically shows the change in limpet shell length at Treasure Cove over the two years sampled. We can see in 2025, the spread of shell lengths trends lower than 2023 and has a narrower distribution- with the IQR values being closer than in 2023.
 
 Graph 2:
 
 ```{r}
 
+#bar plot showing dominant type of habitat at each site 
+
+SizeData_2022_2025 |> ggplot() + 
+  aes(x = habitat, fill = habitat) +   #making sure it counts habitat, fills bars different colors by habitat type 
+  geom_bar() +     #setting up geom bar
+  facet_wrap(~site) +   #spliting it into seperate graphs by site
+  labs(title = "Limpet Habitat Count by Location", x = "Habitat Type", y = "Count")
+
 ```
 
-This shows:
+This shows: This graph shows the counts of each type of habitat at every site (that has data for habitat type). This tells us which type of habitat is the most common at each site, and how this differs between sites.
 
 ## Part 2: Population Density
 
 For the population density analysis, we will analyze data from Shaws Cove, Heisler Park, and Treasure Cove. Create a data frame that excludes the Corona del Mar data, as that site did not have area measured.
 
 ```{r}
-No_CDM_Sizes <- SizeData_2022_2025 |> 
+No_CDM_Sizes <- SizeData_2022_2025 |> filter(site != "Corona del Mar") 
+#filtering for every row where site is NOT equal to corona del mar 
 ```
 
 #### 2.1. How many limpets did we measure at each site in each year for sizes?
@@ -143,13 +158,15 @@ Use nrow(), group_by() and count() to tally the limpet observations at each tran
 No_CDM_Sizes
 
 # How many did we measure total, across both sites?
-No_CDM_Sizes |> 
+No_CDM_Sizes |> nrow()  #just counting number of rows total, since dataframe doesn't have corona del mar --> 1767 total
+
 
 ## How many did we measure at each site? 
-No_CDM_Sizes |> 
+No_CDM_Sizes |> count(site)  #counting number of observations at each site, adds up to 1767 so yippee 
+
 
 # How many did we measure in each transect? 
-No_CDM_Sizes |> 
+No_CDM_Sizes |> group_by(site) |> group_by(transect_num) |> count() #grouping by site since shaws and heisler use same numbers, then grouping by transect number, then counting observations in each transect number 
 ```
 
 #### 2.2 What was the limpet density (i.e., limpets per square meter) for each transect?
