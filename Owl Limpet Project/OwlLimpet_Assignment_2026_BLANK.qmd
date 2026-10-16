@@ -174,23 +174,20 @@ No_CDM_Sizes |> group_by(site) |> group_by(transect_num) |> count() #grouping by
 Make a new dataframe out of the `No_CDM_Sizes` that has a column called *density,* that calculates the limpets per square meter for each transect. Remember that the transect included 1 meter on either side of the tape (total of 2 meters wide). Make sure to maintain the separation in year for the two Treasure Cove surveys using the `group_by()` function.
 
 ```{r}
-Limpet_Density <- No_CDM_Sizes |> 
-  group_by(year, site, transect_length_m) |> 
-  count() |> 
-  mutate(density = (n / (transect_length_m * 2))) #added a bunch of () just in case
-  #transect length * 2 for area because each transect is basically a rectangle, just with different lengths
+#adding density column
 
-#grouping by year and transect length --> transect length is unique, two sites used the same transect num so i can't use that 
-#counting the obersvations in these new groups --> n 
-#adding density column = n / transect length * 2 
-  
-Limpet_Density  #lookin
+Limpet_Density <- No_CDM_Sizes |> 
+  group_by(year, site, transect_num, transect_length_m) |> #grouping by all the     variables i'll need, did NOT work without transect_num
+  count() |>    #counting observations
+  mutate(density = (n / (transect_length_m * 2))) #added a bunch of () just in case
+ 
+#area = transect length * 2  because each transect is basically a rectangle, just with different lengths
+
+Limpet_Density      #lookin
 
 ```
 
 Do you see any patterns just from examining this table of values?
-
-Hard to pull out any patterns from just this. Transect length doesn't seem to have any impact on density- larger transects have some of the lowest densities surprisingly. Site and year probably play a much larger role in determining density.
 
 #### 2.3. Calculating mean and standard error of population density
 
@@ -198,8 +195,8 @@ What was the mean limpets per square meter across all sites? And the standard de
 
 ```{r}
 
-mean(Limpet_Density$density) #mean of all densities
-sd(Limpet_Density$density)   #std of all densities 
+mean(Limpet_Density$density)                            #mean of all densities
+sd(Limpet_Density$density)                              #std of all densities 
 sd(Limpet_Density$density)/sqrt(sum(Limpet_Density$n))  #standard error
 
 ```
@@ -208,11 +205,11 @@ Now create a summary table in which you calculate separate mean and standard dev
 
 ```{r}
 # use summarize() to calculate the mean and standard error (sd/sqrt(n)) for the two locations
-LimpetPopSummary <- Limpet_Density |> group_by(year, site) |> 
-  summarize(mean_d = round(mean(density), 1),
-            std_d = round(sd(density), 1),
-            n = n(),
-            se_d = round(std_d/(sqrt(n)), 1)
+LimpetPopSummary <- Limpet_Density |> group_by(site, year) |>  #grouping by site and year
+  summarize(mean_d = round(mean(density), 1), #SUMMARIZE!!! mean, 1 decimal place
+            std_d = round(sd(density), 1),    #standard deviation, 1 decimal place
+            sample_size = n(),                #sample sizes, counted after being grouped
+            se_d = round(std_d/(sqrt(n)), 1) #standard eror 
   )
   
 # Display your summary nicely using kable(). 
@@ -225,7 +222,11 @@ knitr::kable(LimpetPopSummary)
 Boxplot, using the `Limpet_density` object, using fill for year. Label the Y-axis to say "Limpets per square meter".
 
 ```{r}
-Limpet_Density |> ggplot() + 
+Limpet_Density |> ggplot() +   #setting up plot
+  aes(x=site, y = density, fill = year) +  #decideing axes and year color
+  geom_boxplot()+             #boxplot :) 
+  labs(title = "Limpet Desnity by Location and Year", x = "Location", y = "Limpets per square meter")            #adding labels
+  
  
   
 ```
@@ -233,10 +234,13 @@ Limpet_Density |> ggplot() +
 A column plot with errorbars, and fill = year, using your new `LimpetPopSummary` object. Make sure to label the y-axis appropriately.
 
 ```{r}
-LimpetPopSummary |> ggplot()+
+LimpetPopSummary |> ggplot()+ aes(x = site, y = mean_d, fill = year) + #setting up axes and fill by year
+  geom_col(position = "dodge") +    #column plot :)! set up so bars are side by side
+  geom_errorbar(aes(ymin = mean_d - se_d, ymax = mean_d + se_d), position = "dodge") + #setting error bar values, position = dodge to make sure treasure cove error bars dont overlap 
+  labs(title = "Limpet Density", y = "Limpets per square meter", x = "Site" ) #setting up labels
+
+#max error bar = average - standard error, min error bar = average + standard error
  
-  
-  
 
 ```
 
