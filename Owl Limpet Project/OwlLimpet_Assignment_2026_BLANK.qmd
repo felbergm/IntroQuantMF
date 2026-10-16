@@ -175,21 +175,32 @@ Make a new dataframe out of the `No_CDM_Sizes` that has a column called *density
 
 ```{r}
 Limpet_Density <- No_CDM_Sizes |> 
-  
-  
+  group_by(year, site, transect_length_m) |> 
+  count() |> 
+  mutate(density = (n / (transect_length_m * 2))) #added a bunch of () just in case
+  #transect length * 2 for area because each transect is basically a rectangle, just with different lengths
 
-Limpet_Density
+#grouping by year and transect length --> transect length is unique, two sites used the same transect num so i can't use that 
+#counting the obersvations in these new groups --> n 
+#adding density column = n / transect length * 2 
+  
+Limpet_Density  #lookin
+
 ```
 
 Do you see any patterns just from examining this table of values?
 
-#### 2.2. Calculating mean and standard error of population density
+Hard to pull out any patterns from just this. Transect length doesn't seem to have any impact on density- larger transects have some of the lowest densities surprisingly. Site and year probably play a much larger role in determining density.
+
+#### 2.3. Calculating mean and standard error of population density
 
 What was the mean limpets per square meter across all sites? And the standard deviation? And standard error?
 
 ```{r}
-Limpet_Density |> 
 
+mean(Limpet_Density$density) #mean of all densities
+sd(Limpet_Density$density)   #std of all densities 
+sd(Limpet_Density$density)/sqrt(sum(Limpet_Density$n))  #standard error
 
 ```
 
@@ -197,14 +208,16 @@ Now create a summary table in which you calculate separate mean and standard dev
 
 ```{r}
 # use summarize() to calculate the mean and standard error (sd/sqrt(n)) for the two locations
-LimpetPopSummary <- Limpet_Density |>
+LimpetPopSummary <- Limpet_Density |> group_by(year, site) |> 
+  summarize(mean_d = round(mean(density), 1),
+            std_d = round(sd(density), 1),
+            n = n(),
+            se_d = round(std_d/(sqrt(n)), 1)
+  )
   
-  
-  
-  
- 
 # Display your summary nicely using kable(). 
 knitr::kable(LimpetPopSummary)
+
 ```
 
 #### 2.4 Make three graphs to visualize the difference in density between the two sites.
