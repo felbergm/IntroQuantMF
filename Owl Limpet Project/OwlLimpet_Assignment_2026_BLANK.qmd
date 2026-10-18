@@ -259,7 +259,7 @@ Limpet_Density |> ggplot() + aes(x = site, y = density, color = site) +  #settin
   
 ```
 
-# DO THIS LATER! 
+# DO THIS LATER!
 
 **Which plot do you find the most informative and useful and why?**
 
