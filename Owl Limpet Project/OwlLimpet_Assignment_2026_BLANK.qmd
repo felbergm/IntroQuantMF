@@ -99,13 +99,15 @@ Visualize the transect lengths two different ways.
 
 ```{r}
 TransectLengths |> ggplot() + aes(y = transect_length_m, x = site) + geom_boxplot()
-
+#choosing axes: x = site, y = lenght of transect , creating just a normal boxplot  
   
 
 TransectLengths |> ggplot() + aes(y = transect_length_m, x = site) + geom_point()
+#same axes as before, normal point plot 
 
 
 TransectLengths |> ggplot() + aes(y = transect_length_m, x = site) + geom_boxplot() + geom_point(color = "red")
+#same axes, combined box and point plot, boxplot is the base layer then the point plot is layered on top in red 
 
   
   
@@ -259,11 +261,8 @@ A `geom_point()` or `geom_jitter()`plot to visualize individual transect density
 ```{r}
 Limpet_Density |> ggplot() + aes(x = site, y = density, color = site) +  #setting up axes, color determined by site
   geom_jitter() +   #jitter :) 
-  labs(title = "Limpet Density by site", y = "Limpets per square meter", x = "Site") 
-#labels! 
+  labs(title = "Limpet Density by site", y = "Limpets per square meter", x = "Site") #labels! 
   
-  
-
   
 ```
 
@@ -300,21 +299,13 @@ Filter the data to only include those sites before putting it into the `t.test()
 ShawsHeislerDensity <- Limpet_Density |> filter(site == "Heisler Park" | site == "Shaws Cove" )  #filtering dataset to only include obersvations from Heisler OR Shaws
 
 
-t.test( density ~ site, data = ShawsHeislerDensity) #runnin t test, dependent = density, site = independent
+t.test( density ~ site, data = ShawsHeislerDensity) #runnin t test, dependent = density, site = independent, data = datasite to look into
 
 ```
 
-# DO THIS LATER
-
 Explain the results of this t-test. Are you surprised by this result, given the figure you made above? Why do you think the results are what they are?
 
-- the differences between the groups are not statistically different - pretty big pvalue. the groups averages are different, but not in a crazy important way.
-
-- 95 % confident interval quantifies the uncertainty around the estimated mean difference- range of plausible values for the population mean. when the sample is repeated, theres a 95% chance that the mean will fall between this range. this one includes zero and also negative numbers so its not that great! not useful! we can't have negative limpets!
-
-- i'm not that surprised about this from the graph. the table shows that their averages are only like, 2 limpets apart. we can see that the means are different from each other, but in the boxplot their median lines overlap each others IQR ranges, and in the bar plot they have overlapping standard errors.
-
-- they were also taken in the same year, which might have something to do with it,,,
+- The results of this test show that the means of each group were different, but not in a statistically significant way because of the large p-value. The 95% confidence interval expresses what values the mean will fall between when the sample is repeated multiple times. The confidence interval from this t-test isn't that great and doesn't make sense for the data we're looking at, we can't get a negative limpet density value. These results are not surprising, the previous boxplot shows the averages of these two groups close together (about only 2 limpets apart). Each group's median line also overlaps with the others IQR range and their standard errors overlap within the barplot as well- all pointing towards that these two groups are not significantly different. These results might be due to similar conditions at both sites and the fact that these observations were taken in the same year.
 
 #### 2.7 Did Treasure Cove population density differ between the two sample years? Do a t-test and make a graph to complement presenting the result.
 
@@ -361,26 +352,14 @@ knitr::kable(shl_summary)  #nice table :^)
   
 ```
 
-# DO THIS LATER!
-
 ##### 3.1.2 Graph the shell lengths at each site using a boxplot. What do you observe?
 
-- treasure cove had longest shells on average, shaws cove had the smallest
-
-  - treasure cove's large average could be due to 2 years worth of samples?
-
-- corona del mar, heisler, and shaw's averages all kind of fall near each other- while treasure cove is very much so set apart fro them
-
-- corona del mar and shaws cove have smaller ranges, and their IQR is tighter overall- suggesting less variation?
-
-- none of the sites have roughly equal whisker length, all of them have a longer whisker towards larger shells- so none of them are symmetrically / normally distributed, SKEWED!
-
-- shaws cove has a lot of outliers? should we check the methods for that one?
+- From this graph, we can see that Treasure Cove had the largest shells on average, while Shaws Cove had the smallest. This larger average could be due to Treasure Cove having two years worth of data though. Corona del Mar, Heisler Park, and Shaws Cove all have smaller ranges over all and their averages all fall near each other- Treasure Cove is notable set apart. Corona del Mar nad Shaws Cove both have smaller ranges and tighter IQRs, suggesting less variation within these observations. None of the sites have equal whisker lengths, all of them have longer whiskers towards larger shell sizes suggesting that all of the sites have a skewed distribution.
 
 ```{r}
-ggplot(SizeData_2022_2025) + aes(x = site, y = shell_length_mm, color = site) +
-  geom_boxplot() + 
-  labs(title = "Limpet Shell Size by Site", y = "Shell Length (mm)", x = "Site")
+ggplot(SizeData_2022_2025) + aes(x = site, y = shell_length_mm, color = site) + #setting up axes x = site, y = shell length, site is differentiated by color
+  geom_boxplot() +   #boxplot :) 
+  labs(title = "Limpet Shell Size by Site", y = "Shell Length (mm)", x = "Site") #labels :) 
 
 
   
@@ -408,7 +387,7 @@ CDM_TC_Sizes <- SizeData_2022_2025 |> filter( site == "Treasure Cove" | site == 
 
   
 # set the linear model for testing the assumptions
-model <- lm( shell_length_mm ~ site, data = CDM_TC_Sizes  )  #response = limpet size, predictor = site, data is telling it what dataframe to look into 
+model <- lm(   )
 
 # Examine plot of Residuals vs. Fitted values
 plot(model, which = 1)
@@ -479,13 +458,19 @@ Clean up and combine the 2023, 2024 and 2025 data for Territories:
 load(file = "Data/All_Territories.Rdata")
 
 load(file = "Data/FenbergTerr.Rdata")
+
+All_Territories
 ```
 
 #### 4.2 How many limpet territories did we measure?
 
 ```{r}
 ## How many territories were measured at each site in each year? 
-All_Territories |> 
+
+All_Territories |> group_by(year,site) |> count() #grouping by year and site, then counting them all up
+
+
+
 ```
 
 #### 4.3 Calculate meaningful variables from our measured values
@@ -498,9 +483,14 @@ Create new columns for:
 
 ```{r}
 All_Territories_area_mass <- All_Territories |> 
-  # create a new column for territory area in mm^2 using the "numbsquares" column
-         # mesh = 19 mm x 19 mm 
+  mutate(area_mm2 = ((19^2) * numbsquares)) |> 
+  mutate(mass_g = (0.00009 * size_mm ^ 3.0471)) #mutating columns for area and mass
 
+#total area = 19^2 * number of squares counted 
+#mass = formula below
+
+    # create a new column for territory area in mm^2 using the "numbsquares" column
+         # mesh = 19 mm x 19 mm 
 
   # create a new column for limpet body mass
   # formula: mass_g = 0.00009*length ^ 3.0471
@@ -514,27 +504,48 @@ Explore the relationship between mass_g, and area_mm2 using scatter plots.
 ```{r}
 # plot size_mm vs area_mm2 scatterplot with best fit regression line, no SE zone, not separated by site
 All_Territories_area_mass |> 
-  ggplot() + 
+  ggplot() + aes(x = mass_g, y = area_mm2) + geom_point() + #setting up axes and type of plot, point :) 
+  geom_smooth(se = FALSE) +  #adding regression line, turning SE zone off
+  labs(title = "Limpet Mass (g) vs. Habitat Area (mm^2)", x = "Mass (g)", y = "Habitat Area (mm^2)")       #labels :) 
   
 ```
 
 ```{r}
 ## Scatter plot with site mapped to color
 All_Territories_area_mass |>
-  ggplot() + 
+  ggplot() + aes(x = mass_g, y = area_mm2) + geom_point(aes(color = site)) + #setting up axes and type of plot, new aes in geom_point to color points by site but leave regression line the same 
+  geom_smooth(se = FALSE) +      #sets up regression line, SE zone off  
+  labs(title = "Limpet Mass (g) vs. Habitat Area (mm^2)", x = "Mass (g)", y = "Habitat Area (mm^2)")           #labels :) 
  
 ```
 
 ```{r}
 #  mass_g vs. area_mm2 scatterplot with best fit regression line, no SE zone, faceted by habitat
 All_Territories_area_mass |>
-  ggplot() + 
+  ggplot() +  aes(x = mass_g, y = area_mm2) + geom_point() + #setting up axes and type of plot
+  geom_smooth(se = FALSE) + #sets up regression line, SE zone off  
+  facet_wrap(~site)+ 
+  labs(title = "Limpet Mass (g) vs. Habitat Area (mm^2),  by Site", x = "Mass (g)", y = "Habitat Area (mm^2)")           #labels :) 
   
 ```
 
 #### 4.5 What observations do you make about these plots? What do you find interesting about them? Explain one observation and make one more plot of your choosing to explore something you found interesting.
 
+- treasure coves shows the most dramatic relationship between mass and habitat area- i wonder why, this data is also far more spread than the other sites. its crazy how much different variation is in between all the sites. but yeah treasure cove varies greatly in both mass and habitat area
+
+- shaws cove is incredibly tight and close together, not a lot of variation going on there, all of the limpets have small mass and small habitat
+
+- heisler park shows a wider variation in limpet mass, and there seems to be a more gentler relationship between mass and area- the area size seems to basically level out after hitting a certain size
+
 ```{r}
+
+#im interested in the treasure cove data since it shows the most variation in both mass and area. i wonder if this is because theres 2 years worth of data at this site? Are there different patterns between these two years, or do they show the same pattern and thats why the datas overall plot shows such a steep line? 
+
+All_Territories_area_mass |> filter(site == "Treasure Cove") |> #filtering for just treasure cove data 
+  ggplot() + aes(x = mass_g, y = area_mm2) + geom_point() + #setting up axes, x = mass, y = habitat area- choosing point plot 
+  geom_smooth(se = FALSE) +    #regression line, no SE zone 
+  facet_wrap(~year) +          #dividng into two charts, by year 
+  labs(title = "Treasure Cove Limpet Mass vs. Habitat Area", x = "Mass (g)", y = "Habitat Area (mm^2)")         #labels :) 
 
 ```
 
