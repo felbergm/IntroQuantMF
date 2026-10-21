@@ -18,13 +18,11 @@ library(readxl)
 
 *Once you have completed this entire assignment, come back and write a project summary here that covers the aims, research questions, and basic methods of this study.*
 
-aims:
+The aims of this project is to identify how several limpet variables relate to each other and how these variables differ by site and year. We wanted to find how limpet size and density differs between sample sites and years, and how limpet mass and territory size relate to each other.
 
-- trying to see how limpet sizes and densities per square meter differs between sample sites and years
+To gather data, limpets and territory sizes were measured from Corona del Mar (2022), Treasure Cove (2023 and 2025), Shaws Cove (2024), and Heisler Park (2024). Limpets within a transect were counted, their shell length was measured in millimeters, and their territory size was measured using standardized nets.
 
-- basic methods: go out and sample a bunch of limpets from different sites, measure them from tip to tail, count all of them along a transect
-
-- analysis: visualize all the data, calculate the density of limpets per square meter by site and per transect. calculate a bunch of different things for population density, bunch of summary statistics
+Data analysis regarding population density, shell length, and territory size was conducted. Population density per square meter for each site and transect was calculated alongside various summary statistics to compare densities between sites. To see if groups were significantly different in length, t-tests were conducted on the two years of Treasure Cove data, and between observations from Heisler Park and Shaws Cove. Continuing with shell length data, tests of assumptions were applied before comparing Treasure Cove and Corona del Mar data via t-test to find significant differences in populations. Territory area and limpet mass were calculated from collected data and Fenberg's equation relating mass and shell length. The relationship between mass and territory area was then investigated and compared between sites. Assumptions of tests of linear regression were applied to this data, both variables were log-transformed, and a linear model was created to highlight the relationship via a best fit regression line. A logarithmic linear model was created for Fenberg's data to compare.
 
 You have been given data from several locations and survey years:
 
@@ -199,7 +197,7 @@ view(Limpet_Density)      #lookin
 
 Do you see any patterns just from examining this table of values?
 
-- From this table, Treasure cove 2025 seems to have the lowest density while Shaws Cove 2024 has the highest density. Transect length seems to not have anything to do with density, surprising since I assumed that longer transects would naturally result in higher densities. Density seems to be primarily dependent on site, and to a lesser extent, year.
+- From this table, Treasure cove 2025 seems to have the lowest density while Shaws Cove 2024 has the highest. Transect length seems to not have anything to do with density- surprising since I assumed that longer transects would naturally result in higher densities. Density seems to be primarily dependent on site, and to a lesser extent, year.
 
 #### 2.3. Calculating mean and standard error of population density
 
@@ -334,10 +332,10 @@ Since there was no difference in means, we'll ignore year at Treasure Cove from 
 # generate a nice table (like you did for counts, using kable() and round digits) with the mean shell length, standard deviation, and sample size of each site. Ignore transect. 
 
 shl_summary = SizeData_2022_2025 |> group_by(year, site) |> summarize(
-    mean_shl = round(mean(shell_length_mm), 1), 
-    std_shl  = round(sd(shell_length_mm), 1), 
-    shl_n = n(), 
-    se_shl = round(std_shl / (sqrt(shl_n)), 1)
+    mean_shl = round(mean(shell_length_mm), 1), #mean
+    std_shl  = round(sd(shell_length_mm), 1),   #standard deviation
+    shl_n = n(),                                #sample size
+    se_shl = round(std_shl / (sqrt(shl_n)), 1)  #standard error
 ) #grouping by year and site, then setting up the summarize table, all rounded to 1 decimal place 
 
 
@@ -361,11 +359,10 @@ ggplot(SizeData_2022_2025) + aes(x = site, y = shell_length_mm, color = site) + 
   geom_boxplot() +   #boxplot :) 
   labs(title = "Limpet Shell Size by Site", y = "Shell Length (mm)", x = "Site") #labels :) 
 
-
   
 ```
 
-#### 3.2. DOUBLE CHECK!! Is there a [statistically significant]{.underline} difference in [mean]{.underline} size between limpets measured at Treasure Cove (a relatively low-impact site) compared to CDM (a high impact site)?
+#### 3.2. Is there a [statistically significant]{.underline} difference in [mean]{.underline} size between limpets measured at Treasure Cove (a relatively low-impact site) compared to CDM (a high impact site)?
 
 We have a much larger sample size for shell lengths than we did for density, so we can apply our tests of assumptions more rigorously and demonstrate our various tests.
 
@@ -383,17 +380,17 @@ T-Test assumptions (for a Student's T-test)
 ## Test for Homogeneity of Variance with an F-Test
 
 # create the appropriate filter to include only Treasure Cove and CDM data
-CDM_TC_Sizes <- SizeData_2022_2025 |> filter( site == "Treasure Cove" | site == "Corona del Mar")
+CDM_TC_Sizes <- SizeData_2022_2025 |> filter( site == "Treasure Cove" | site == "Corona del Mar")    #filtering for only observaitons from Treasure Cove or Corona del Mar 
 
   
 # set the linear model for testing the assumptions
-model <- lm(   )
+model <- lm(shell_length_mm ~ site, data = CDM_TC_Sizes)   #setting up model, shell_length_mm = response, site = predictor, data = where to look 
 
 # Examine plot of Residuals vs. Fitted values
-plot(model, which = 1)
+plot(model, which = 1)        #plotting model, 1st plot 
 
 # F-test for homogeneity of variance - if p-value < 0.05 then variances are different. 
-var.test(  )
+var.test(shell_length_mm ~ site, data = CDM_TC_Sizes)   #testing with formula, shell_length is a function of site, data = where to look 
 
 # NOTE: if your sample fails this test, have no fear! Welch's t-test (the default that R uses) is okay to use with unequal variances. 
 
@@ -405,10 +402,10 @@ var.test(  )
 ## Test for normality
 
 # examine a QQ-plot
-plot(model, which = 2)
+plot(model, which = 2)   #calling up model from before, 2nd plot 
 
 # conduct a Shapiro-Wilk test on the residuals
-shapiro.test(model$residuals)
+shapiro.test(model$residuals)  #p value < 0.05 so model residuals are different from normal, but big sample size so we can't take it seriously 
 ```
 
 Why will we not pay attention to this Shapiro-Wilk test result? Because the sample size is very large and Shapiro-Wilk is overly sensitive (gives false positives) at large sample sizes.
@@ -417,7 +414,8 @@ Why will we not pay attention to this Shapiro-Wilk test result? Because the samp
 
 ```{r t-test or Wilcox}
 # calculate the t-test results
-t.test(      )
+t.test( shell_length_mm ~ site, data = CDM_TC_Sizes)  #t test!! shell length = response, site = predictor 
+
 ```
 
 #### [3.3 Graph your results using a column plot with error bars for standard error]{.underline}
@@ -425,14 +423,35 @@ t.test(      )
 For full credit, have well centered error bars and professionally labeled axes (they should not say "mean", they should say the variable name).
 
 ```{r}
-CDM_TC_Sizes |>
+
+CDM_TC_summary = CDM_TC_Sizes |> group_by(site,year) |> #grouping by site and year then setting up the whole summary stats again, all rounded to 1 decimal place
+  summarize(  
+    mean_shl2 = round(mean(shell_length_mm, na.rm = TRUE), 1),   #shell length avg
+    std_shl2  = round(sd(shell_length_mm, na.rm = TRUE), 1),     #standard deviation
+    shl_n2 = n(),                                                #count
+    se_shl2 = round(std_shl2 / (sqrt(shl_n2)), 1)                #standard error
+  )                
+  #na.rm to ignore the NAs in the corona del mar data 
   
+
+
+####plottin
+#using the obj i assigned the summary stats to: 
+ggplot(CDM_TC_summary) + aes(x = site, y = mean_shl2, fill = year) +  #setting up axes, differentiated by year
+  geom_col(position = "dodge", width = 0.8) +   #column plot! dodge position to make bars side by side, slight width adjustment
+  geom_errorbar(aes(ymin = mean_shl2 - se_shl2, ymax = mean_shl2 + se_shl2), position = "dodge", width = 0.8) +   #setting up error bars, position dodge so they're not overlapping, matching width to bars 
+  labs(title = "Average Limpet Shell Length by Site and Year", x = "Site", y = "Mean Shell Length (mm)" )  #labels :) 
+
+
+
 
 ```
 
 #### [3.4 - Interpret and explain the results of your test]{.underline}
 
 Are we pretty confident that these samples were drawn from different populations? Why is the standard error so small?
+
+- We can be pretty confident that these samples were drawn from different populations because of the very small p value. These samples are significantly different from each other and show different shell lengths. The small standard error could be due to the overall small standard deviations and large sample size. Standard deviation is directly proportional to standard error and the larger sample size decreases the standard error and makes estimates more precise.
 
 #### 3.5 - EXTRA CREDIT: repeat this analysis to see if the same result holds for the comparison at Heisler Park (high impact site) vs. Shaws Cove (low impact site).
 
@@ -506,7 +525,7 @@ Explore the relationship between mass_g, and area_mm2 using scatter plots.
 All_Territories_area_mass |> 
   ggplot() + aes(x = mass_g, y = area_mm2) + geom_point() + #setting up axes and type of plot, point :) 
   geom_smooth(se = FALSE) +  #adding regression line, turning SE zone off
-  labs(title = "Limpet Mass (g) vs. Habitat Area (mm^2)", x = "Mass (g)", y = "Habitat Area (mm^2)")       #labels :) 
+  labs(title = "Limpet Mass (g) vs. Territory Area (mm^2)", x = "Mass (g)", y = "Territory Area (mm^2)")       #labels :) 
   
 ```
 
@@ -515,7 +534,7 @@ All_Territories_area_mass |>
 All_Territories_area_mass |>
   ggplot() + aes(x = mass_g, y = area_mm2) + geom_point(aes(color = site)) + #setting up axes and type of plot, new aes in geom_point to color points by site but leave regression line the same 
   geom_smooth(se = FALSE) +      #sets up regression line, SE zone off  
-  labs(title = "Limpet Mass (g) vs. Habitat Area (mm^2)", x = "Mass (g)", y = "Habitat Area (mm^2)")           #labels :) 
+  labs(title = "Limpet Mass (g) vs. Territory Area (mm^2)", x = "Mass (g)", y = "Territory Area (mm^2)")           #labels :) 
  
 ```
 
@@ -525,17 +544,13 @@ All_Territories_area_mass |>
   ggplot() +  aes(x = mass_g, y = area_mm2) + geom_point() + #setting up axes and type of plot
   geom_smooth(se = FALSE) + #sets up regression line, SE zone off  
   facet_wrap(~site)+ 
-  labs(title = "Limpet Mass (g) vs. Habitat Area (mm^2),  by Site", x = "Mass (g)", y = "Habitat Area (mm^2)")           #labels :) 
+  labs(title = "Limpet Mass (g) vs. Territory Area (mm^2),  by Site", x = "Mass (g)", y = "Territory Area (mm^2)")           #labels :) 
   
 ```
 
 #### 4.5 What observations do you make about these plots? What do you find interesting about them? Explain one observation and make one more plot of your choosing to explore something you found interesting.
 
-- treasure coves shows the most dramatic relationship between mass and habitat area- i wonder why, this data is also far more spread than the other sites. its crazy how much different variation is in between all the sites. but yeah treasure cove varies greatly in both mass and habitat area
-
-- shaws cove is incredibly tight and close together, not a lot of variation going on there, all of the limpets have small mass and small habitat
-
-- heisler park shows a wider variation in limpet mass, and there seems to be a more gentler relationship between mass and area- the area size seems to basically level out after hitting a certain size
+- Treasure Coves shows the most dramatic relationship between mass and habitat area, with a wider range of variation in both mass and habitat area. I wonder why this is, is it because this site has two years worth of data? The points in Shaws cove are incredibly tight and close together, all limpets here have a small mass and habitat area with little variation. Heisler park shows a wider variation in limpet mass and there seems to be a more gentler relationship between mass and area. At this site, habitat area seems to level out once a certain mass is hit. All plots show an overall positive correlation between mass and habitat area, but with varying strengths.
 
 ```{r}
 
@@ -545,7 +560,7 @@ All_Territories_area_mass |> filter(site == "Treasure Cove") |> #filtering for j
   ggplot() + aes(x = mass_g, y = area_mm2) + geom_point() + #setting up axes, x = mass, y = habitat area- choosing point plot 
   geom_smooth(se = FALSE) +    #regression line, no SE zone 
   facet_wrap(~year) +          #dividng into two charts, by year 
-  labs(title = "Treasure Cove Limpet Mass vs. Habitat Area", x = "Mass (g)", y = "Habitat Area (mm^2)")         #labels :) 
+  labs(title = "Treasure Cove Limpet Mass vs. Territory Area", x = "Mass (g)", y = "Territory Area (mm^2)")         #labels :) 
 
 ```
 
@@ -555,9 +570,14 @@ All_Territories_area_mass |> filter(site == "Treasure Cove") |> #filtering for j
 
 # write a linear model for the relationship, then use the plot() function on the model object to show the residuals vs. fitted values and QQ plots to assess your regression. 
 
-linear_model <- lm(     )
+view(All_Territories_area_mass)
+
+linear_model <- lm(mass_g ~ area_mm2, data = All_Territories_area_mass )
 
 plot(linear_model)
+
+#The residuals vs fitted plot fails, the data does show not a random amount of variation between points. The points in this graph are extremely clustered on the right end, suggesting a lot of negative residuals, and the fitted red line is not roughly flat. 
+#The q-q residuals plot also fails. The points start to strongly curve upwards on the right end of the plot and the overall curved shape fails the normality assumption. The data will need to be transformed for sure. 
 ```
 
 One way to transform data that has this shape is to apply a log-transformation. Logarithmic relationships are common in biology for mass, volume, or other spatial relationships.
@@ -567,24 +587,32 @@ One way to transform data that has this shape is to apply a log-transformation. 
 ```{r scatterplot with regression line}
 # plot a scatterplot log area on y axis by log mass_g on x axis, best fit regression line but no SE interval
 
-All_Territories_area_mass |> ggplot() + 
+All_Territories_area_mass |> ggplot() + aes(log(mass_g), log(area_mm2)) + #setting up plot with mass on x, area on y, both log-transformed
+  geom_point() +    #point plot :) 
+  geom_smooth(method = "lm", se = FALSE) +  #adding regression line, linear model method, no SE zone 
+  labs(title = "Limpet Mass vs. Territory Area", x = "log(Mass) (g)", y = "log(Territory area) (mm^2)")  #labels :) 
 
 ```
 
 ```{r}
 # write the linear model object and examine the residual and QQ plots
-log_model <- lm(     )
-  
-plot(log_model, which = 1)
-plot(log_model, which = 2)
+log_model <- lm(log(area_mm2)~ log(mass_g), data = All_Territories_area_mass) #setting up linear model with both log mass and area, response = area, predictor = mass, data = where to look
+
+plot(log_model, which = 1) #plottin log linear model, 1st plot
+plot(log_model, which = 2) #plottin log linear model, 2nd plot
+
+#variance of residuals looks way better, q-q still has little weird ends but overall a lot closer to normal 
 ```
 
 #### 4.8. What is the formula for the best fit line for the relationship between territory size and body mass in owl limpets?
 
 ```{r linear regression test summary}
 
+summary(log_model)  #calling up summary table 
 
-
+intercept = round(coef(log_model)[1], 4)  #pulling out intercept, 4 decimal points
+slope     = round(coef(log_model)[2], 4)  #pulling out slope, 4 decimal points
+ 
 ```
 
 **The formula for the best fit line can be extracted from the model summary. The two values in the Estimate column are the coefficients - (Intercept) gives the y-intercept, and the variable gives the slope.**
@@ -601,16 +629,22 @@ plot(log_model, which = 2)
 FenbergTerr
 
 # Plot the Fenberg data with the log transformations
-FenbergTerr |> ggplot() +
+FenbergTerr |> ggplot() + aes(log(mass_g), log(area_mm2)) + geom_point() + geom_smooth(method = "lm", se= FALSE)
  
 
 # Find the slope and intercept of the best fit line
-Fenberg_model <- lm(   )
+Fenberg_model <- lm(log(area_mm2)~ log(mass_g), data = FenbergTerr)
 
+summary(Fenberg_model)
+#fenberg stats: 
+  #slope     = 0.89162    
+  #intercept = 7.90973    
 
 ```
 
 Explain your findings!
+
+- My findings from this dataset are in alignment with Fenbergs. Limpet mass and territory size are positively correlated to a significant degree, and there is good evidence that there is a causal relationship between these two variables. In terms of log transformed variables, Fenberg's relationship is: y = 0.8916 + 7.909, similar to mine: y = 0.8903 + 8.2116.
 
 ### Part 5: EXTRA CREDIT:
 

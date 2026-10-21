@@ -323,6 +323,7 @@ We will create a model object here that will allow us to test some of our assump
 
 ```{r}
 model <- lm(Height ~ Site, data = sward2)
+plot(model, which = 1)
 ```
 
 ### Step 3 : Visualize the data
