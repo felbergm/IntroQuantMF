@@ -11,7 +11,7 @@ editor: visual
 For your final project analysis, you have been placed into groups, within which you can collaborate and help each other. Within your group, you will divide up the different data that is available to ask questions. You are required to address TWO questions each.
 
 1.  An ANOVA/GLM question that addresses the impact of the experimental treatments on a measured variable (SPAD, stomatal conductance, or height) in one of the two plant species.
-2.  A question of your choice that analyzes one of the abiotic variables (soil moisture, slope, aspect, etc.), past year data, or an interaction within the experiment.
+2.  A question of your choice that analyzes one of the regression variables (soil moisture, slope, aspect, etc.), past year data, or an interaction within the experiment.
 
 The following worksheet will guide you through developing your research questions, hypotheses, and analysis approach.
 
@@ -19,12 +19,13 @@ The following worksheet will guide you through developing your research question
 
 ```{r}
 library(tidyverse)
-library(readxl)
+library(readxl)   #reads excel files 
 ```
 
 ### Import all the data
 
 ```{r}
+#reading excel files: 
 Height_Data_Raw <- 
   read_excel("Oak Data Entry MCRS Field Trip.xlsx", 
              sheet = "Seedling Heights")
@@ -36,7 +37,7 @@ Moist_Data_Raw <-
 SPAD_Data_Raw <- 
   read_excel("Oak Data Entry MCRS Field Trip.xlsx", 
              sheet = "SPAD", 
-             na = "NA")
+             na = "NA")  #tells it to read NA as missing data 
 ```
 
 **Amy gives the gift of importing the LICOR objects for you:**
@@ -45,18 +46,20 @@ SPAD_Data_Raw <-
 LICOR_Data_Raw_NAMES <- 
   read_excel("Oak Data Entry MCRS Field Trip.xlsx",              
              sheet = "LICOR", 
-             n_max = 3, 
-             col_names = FALSE, 
-             col_types = "text") |> 
-  summarise(across(.fns = paste, collapse = "_")) |> 
+             n_max = 3,           #takes only the first three rows of the sheet
+             col_names = FALSE,   #dont import each column name 
+             col_types = "text") |>  #import each collumn as text
+  summarise(across(.fns = paste, collapse = "_")) |>  #collapses across multiple rows
+#paste = takes two cells and puts them into the same one, one right after another 
+#collapse is delimeter, symbol put in between them 
   unlist() |> 
-  unname()
+  unname()  #makes this into a vector of character strings, instead of a data frame
 
 LICOR_Data_Raw <- 
   read_excel("Oak Data Entry MCRS Field Trip.xlsx",  
              sheet = "LICOR", 
-             skip = 3, 
-             col_names = LICOR_Data_Raw_NAMES,
+             skip = 3,   #skips first 3 rows 
+             col_names = LICOR_Data_Raw_NAMES, #replaces column names with the name vector from before, instead of names from the sheet 
              col_types = "text")
 
 
@@ -77,7 +80,10 @@ ALL_Licor <-
              col_names = ALL_Licor_NAMES, 
              col_types = "text")
 
-LICOR_Data_Raw <- full_join(LICOR_Data_Raw, ALL_Licor)
+LICOR_Data_Raw <- full_join(LICOR_Data_Raw, ALL_Licor)  #joins dataframes together using certain keys! matches data entries together based on an identifier collumn 
+#inner_join = joins the data that is shared between dataframes, gets rid of ones that dont have match 
+#left_join = joins only according to the first dataframe, ignores the one in the second 
+#full join = joins along identifier rows, keeps copies of them all and puts NAs where there aren't matches 
 ```
 
 ## Exploratory Data Analysis:
@@ -141,6 +147,109 @@ You may be either examining `SPAD_Data_Raw`, `Height_Data_Raw`, `LICOR_Data_Raw`
 
 ```{r}
 
+#keeping only collumns I want from SPAD: 
+SPAD_no_col <- SPAD_Data_Raw |> select(Date, Block, Treatment, Tag_Num, Leaf1, Leaf2, Leaf3, Leaf4, Leaf5, Leaf6) 
+
+#keeping only good collumns from Moist: 
+Moist_no_col <- Moist_Data_Raw |>  select(Date, Block, Treatment, VWC1_perc, VWC2_perc, VWC3_perc)
+
+#keeping good LICOR collumns 
+Licor_no_col <- LICOR_Data_Raw |> select(SYS_Date_YYYYMMDD, `USERDEF_Block Number_NA`, `USERDEF_Tag Number_NA`,  Treatment_NA_NA, `PORO_gsw_mol+1m-2s-1`, `PORO_E_apparent_mmol+1m-2s-1`)
+```
+
+```{r}
+#LICOR: 
+#renaming collumns
+LICOR_rename <- Licor_no_col |> rename(date = SYS_Date_YYYYMMDD , 
+          block = `USERDEF_Block Number_NA`, 
+          treatment = Treatment_NA_NA , 
+          conductance = `PORO_gsw_mol+1m-2s-1`, 
+          transpiration = `PORO_E_apparent_mmol+1m-2s-1`, 
+          tag_num = `USERDEF_Tag Number_NA`)
+
+#checking data type: -LICOR data is all character type :/ 
+LICOR_datatype <- LICOR_rename |> mutate(treatment = as.factor(treatment)) #convert 2 factor 
+LICOR_datatype <- LICOR_datatype |> mutate(across
+                                           (c(conductance, transpiration), 
+                                             as.numeric)) #converting 2 numerical 
+
+#exploring licor data: 
+#conductance: 
+ggplot(LICOR_datatype) + aes(x = conductance) + geom_histogram() + xlim(-0.25, 0.25)
+
+ggplot(LICOR_datatype) + aes(x = block, y = conductance) + geom_boxplot() + ylim(-.25,.25)
+
+LICOR_datatype |> filter(block == "4.0")
+
+
+#transpiratoin
+ggplot(LICOR_datatype) + aes(x = transpiration) + geom_histogram()
+
+ggplot(LICOR_datatype) + aes(x = block, y = transpiration) + geom_boxplot()
+
+#samples sizes: 
+LICOR_datatype |> group_by(block) |> summarize(count = n()) 
+
+LICOR_datatype |> group_by(treatment) |> summarize(count = n()) 
+
+
+#takeaways: 
+  #there are two HUGE outliers in the conducance values, normal values fall between -.25 and .25 
+  #trans data seems good! maybe one large outlier near 10
+  #there seems to be an extra block- block 4.0? one row 
+  #transpiration outliers in blocks 3 and 7 
+  #looking at observations per block 7, 8, and 6 kinda have  more than the other blocks
+  #treatments have similar samples sizes 
+  #extra treatments: ?? and NA 
+  #SPAD dataset has a bunch of NA collumns 
+
+
+```
+
+```{r}
+#testing converting dates in LICOR to a date time datatype 
+
+LICOR_date <- LICOR_datatype |> mutate(date = as.Date(date))
+
+glimpse(LICOR_date)
+
+
+#changing spad dates 
+SPAD_date <- SPAD_no_col |> mutate(Date = as.Date(Date))
+
+glimpse(SPAD_date)
+
+#moist data: 
+moist_date <- Moist_no_col |> mutate(Date = as.Date(Date))
+#converting moist numbers from character 2 number 
+moist_date <- moist_date |> mutate(across(c(VWC1_perc, VWC2_perc, VWC3_perc), as.numeric))
+glimpse(moist_date)
+```
+
+```{r}
+#xploring SPAD: 
+
+#sample size
+SPAD_date |> group_by(Block) |> summarize(count = n()) 
+SPAD_date |> group_by(Treatment) |> summarize(count = n()) 
+
+#trying to make new collumn with mean across all leaves: 
+SPAD_mean <- SPAD_date |> rowwise() |> mutate(leaf_mean = mean(
+  c(Leaf1, Leaf2), na.rm = TRUE
+)) |> ungroup()
+
+#histos: 
+SPAD_mean |> ggplot() + aes(x = Block, y = leaf_mean) +
+  geom_boxplot()
+
+SPAD_mean |> ggplot() + aes(x = Treatment, y = leaf_mean) +
+  geom_boxplot()
+
+#takeaways: 
+  #blocks and treatments both have similar sample sizes, yay 
+  #will have to find a way to take the mean across all leaves!!!!
+  #leaf means: block 3 has crazy crazy outliers
+  #leaf means: open space has 2 outliers 
 ```
 
 In this next chunk, generate a cleaned data set following the example below. As you examine your raw data and find things to fix, add a #Note to create a list of things to fix up. You can then use pipes and write code to fix each thing in your checklist. This is also where if you identified `filters` or data computations in your Hypothesis worksheet (e.g., choose only one species), you can apply those.
@@ -154,11 +263,16 @@ Check out the illustrative animations on this page: <https://github.com/gadenbui
 ```{r}
 Height_Data <- Height_Data_Raw |> 
   
-  # use notes like this to create a checklist of the things that need to be fixed, then you can fill in code between each line as you fix them. 
-
-  # Thing to fix #2
-
-  # Thing to fix #3
+  #all of them: 
+  #get rid of a bunch of collumns 
+  #get rid of bottom NA rows 
+   #convert treatment type to factor type data 
+  
+  #convert licor to numeric values
+  #licor - rename a bunch, Transpiration, stomatal conductance, psI/psII 
+  #SPAD - should be good but could delete QA/QC
+  #moist - only need volumetric water content --> KEEP DATE!!! 
+  
 ```
 
 ### Regression dataset
