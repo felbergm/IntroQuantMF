@@ -81,6 +81,7 @@ ALL_Licor <-
              col_types = "text")
 
 LICOR_Data_Raw <- full_join(LICOR_Data_Raw, ALL_Licor)  #joins dataframes together using certain keys! matches data entries together based on an identifier collumn 
+
 #inner_join = joins the data that is shared between dataframes, gets rid of ones that dont have match 
 #left_join = joins only according to the first dataframe, ignores the one in the second 
 #full join = joins along identifier rows, keeps copies of them all and puts NAs where there aren't matches 
@@ -141,9 +142,15 @@ In this section we will look at and clean up each of the data sets you identifie
         3.  If you find something weird, check it against the original data sheets, correct or remove with `filter()` if appropriate.
         4.  View your data with histograms.
 
-### ANOVA dataset
+### ANOVA + regression dataset
+
+**Sorry I accidentally cleaned all of my datasets and explored the LICOR one within this one section. It's messy but I clean the SPAD, Moist, and LICOR datasets.**
+
+**Basic cleaning steps:** delete columns, rename columns, convert all datatypes to the appropriate one (date, numerical, factor), calculate means for each observation for SPAD and Moisture, make sure nothing breaks
 
 You may be either examining `SPAD_Data_Raw`, `Height_Data_Raw`, `LICOR_Data_Raw`, or `Moist_Data_Raw` for your ANOVA question. Examine your data set using the diagnostic functions I've given you above in the How to Examine and Clean Data section.
+
+Keeping only columns I want from datasets:
 
 ```{r}
 
@@ -156,6 +163,8 @@ Moist_no_col <- Moist_Data_Raw |>  select(Date, Block, Treatment, VWC1_perc, VWC
 #keeping good LICOR collumns 
 Licor_no_col <- LICOR_Data_Raw |> select(SYS_Date_YYYYMMDD, `USERDEF_Block Number_NA`, `USERDEF_Tag Number_NA`,  Treatment_NA_NA, `PORO_gsw_mol+1m-2s-1`, `PORO_E_apparent_mmol+1m-2s-1`)
 ```
+
+cleaning up LICOR and exploring it:
 
 ```{r}
 #LICOR: 
@@ -172,25 +181,36 @@ LICOR_datatype <- LICOR_rename |> mutate(treatment = as.factor(treatment)) #conv
 LICOR_datatype <- LICOR_datatype |> mutate(across
                                            (c(conductance, transpiration), 
                                              as.numeric)) #converting 2 numerical 
+#converting date to factor
+licor_date <- LICOR_datatype |> mutate(date = as.factor(date), levels(c(2026-10-08, 2026-10-15)))
 
 #exploring licor data: 
 #conductance: 
-ggplot(LICOR_datatype) + aes(x = conductance) + geom_histogram() + xlim(-0.25, 0.25)
+ggplot(licor_date) + aes(x = conductance) + geom_histogram() + xlim(-0.25, 0.25)
 
-ggplot(LICOR_datatype) + aes(x = block, y = conductance) + geom_boxplot() + ylim(-.25,.25)
+ggplot(licor_date) + aes(x = date, y = conductance) + geom_boxplot() + ylim(-.25,.25)
 
-LICOR_datatype |> filter(block == "4.0")
+ggplot(licor_date) + aes(x = treatment, y = conductance) + geom_boxplot()
+
+
+licor_date|> filter(block == "4.0") #xamining where theres a random 4.0 block?? somebody put in a 4.0 block with no data?? why did they do this
 
 
 #transpiratoin
-ggplot(LICOR_datatype) + aes(x = transpiration) + geom_histogram()
+ggplot(licor_date) + aes(x = transpiration) + geom_histogram()
 
-ggplot(LICOR_datatype) + aes(x = block, y = transpiration) + geom_boxplot()
+ggplot(licor_date) + aes(x = date, y = transpiration) + geom_boxplot()
+
+ggplot(licor_date) + aes(x = treatment, y = transpiration) + geom_boxplot() + 
+  ylim(2.5, -2.5)
+
 
 #samples sizes: 
-LICOR_datatype |> group_by(block) |> summarize(count = n()) 
+licor_date |> group_by(block) |> summarize(count = n()) 
 
-LICOR_datatype |> group_by(treatment) |> summarize(count = n()) 
+licor_date |> group_by(treatment) |> summarize(count = n()) 
+
+
 
 
 #takeaways: 
@@ -200,17 +220,21 @@ LICOR_datatype |> group_by(treatment) |> summarize(count = n())
   #transpiration outliers in blocks 3 and 7 
   #looking at observations per block 7, 8, and 6 kinda have  more than the other blocks
   #treatments have similar samples sizes 
-  #extra treatments: ?? and NA 
-  #SPAD dataset has a bunch of NA collumns 
-
+  #extra treatments: ?? and NA, might need to fix later
+  #Date doesn't show any dramatic differences in transpiration or conductance, rain seems to have had no effect? 
+  #TRANSPIRATION: AC, DT and NR all have similar spreads and kind of similar means, all have outliers too. OS has a much wider range, no outliers. 
+  #boxplot for conductance v. treatment is wicked fucked up. INSANE outliers in OS that I need to find 
+  #CONDUCTANCE: once again OS has a wider range than others, no outliers other than the insane 2. AC, DT, and NR's means are closer together 
+  #NA TREATMENT IS PISSING ME OFF!!!! i might go in and manually fill some things out because cross referencing the sheets <-- EMAIL AMY LATER!!! 
 
 ```
+
+messing with datatypes, I reclassify the date columns to be Date data but then change them to factors later to make graphing easier. I also create a column with average soil moisture per row:
 
 ```{r}
 #testing converting dates in LICOR to a date time datatype 
 
-LICOR_date <- LICOR_datatype |> mutate(date = as.Date(date))
-
+licor_date <- LICOR_datatype |> mutate(date = as.factor(date), levels(c(2026-10-08, 2026-10-15)))
 glimpse(LICOR_date)
 
 
@@ -224,7 +248,16 @@ moist_date <- Moist_no_col |> mutate(Date = as.Date(Date))
 #converting moist numbers from character 2 number 
 moist_date <- moist_date |> mutate(across(c(VWC1_perc, VWC2_perc, VWC3_perc), as.numeric))
 glimpse(moist_date)
+
+#adding a new collumn that averages vwc across rows, so theres a single value per observation: 
+moist_mean <- moist_date |> rowwise() |> mutate(vwc_mean = mean(
+  c(VWC1_perc, VWC2_perc, VWC3_perc), na.rm = TRUE
+)) |> ungroup() 
+
+
 ```
+
+exploring spad sample sizes, creating column with average spad value for each row, and making some boxplots:
 
 ```{r}
 #xploring SPAD: 
@@ -235,8 +268,8 @@ SPAD_date |> group_by(Treatment) |> summarize(count = n())
 
 #trying to make new collumn with mean across all leaves: 
 SPAD_mean <- SPAD_date |> rowwise() |> mutate(leaf_mean = mean(
-  c(Leaf1, Leaf2), na.rm = TRUE
-)) |> ungroup()
+  c(Leaf1, Leaf2, Leaf3, Leaf4, Leaf5, Leaf6), na.rm = TRUE
+)) |> ungroup() 
 
 #histos: 
 SPAD_mean |> ggplot() + aes(x = Block, y = leaf_mean) +
@@ -261,17 +294,6 @@ Read about joins here: <https://r4ds.hadley.nz/joins>
 Check out the illustrative animations on this page: <https://github.com/gadenbuie/tidyexplain?tab=readme-ov-file#mutating-joins>
 
 ```{r}
-Height_Data <- Height_Data_Raw |> 
-  
-  #all of them: 
-  #get rid of a bunch of collumns 
-  #get rid of bottom NA rows 
-   #convert treatment type to factor type data 
-  
-  #convert licor to numeric values
-  #licor - rename a bunch, Transpiration, stomatal conductance, psI/psII 
-  #SPAD - should be good but could delete QA/QC
-  #moist - only need volumetric water content --> KEEP DATE!!! 
   
 ```
 
@@ -284,7 +306,6 @@ Repeat the steps you took for your ANOVA data for your second data set of choice
 ```
 
 ```{r}
-Data <- _Raw |> 
    
   #Things to Fix
 ```
@@ -306,5 +327,105 @@ Not sure where to start?
 Go for it!
 
 ```{r}
+
+```
+
+reclassify moisture date data to be a factor, then exploring with a bunch of boxplots and histograms and taking sample sizes:
+
+```{r}
+####FINAL CLEANED DATASETS: 
+#moist_mean, spad_mean, licor_date 
+############################################################
+
+#trying to make r read the date field better, reclassing as a factor:
+moist_mean <- moist_mean |> mutate(Date = as.factor(Date), levels(c(2026-10-08, 2026-10-15)))
+
+#xploring moist data: 
+moist_mean |>  ggplot() + aes(x = Date, y = vwc_mean) +
+  geom_boxplot()
+
+moist_mean |> ggplot() + aes(x = Treatment, y = vwc_mean) +
+  geom_boxplot()
+
+#checking sample sizes by treatment type, since my boxplot looks weird: 
+moist_mean |> group_by(Treatment) |> summarize(count = n())
+#sample size by block: 
+moist_mean |> group_by(Date) |> summarize(count = n())
+
+moist_mean |> ggplot() + aes(x = vwc_mean) +geom_histogram()
+
+#takeaways: 
+      #HUGE difference in average moisture observaitons between rain storm, blcoks 1-4 are super dry while 5-8 are super wet. #rainmoment 
+      #huge variance in soil moisture when divided by treatment- might not be that reliable to analyze 
+      #natural recruit has super low moisture range --> THERES ONLY 3 SAMPLES FOR NATURAL RECRUITS!!!! BRUH!!! 
+      #blocks have more equal sample sizes, block 5 only has 2 though.... hrm... also a bunch of NA's --> DATES HAVE PRETTY SIMILAR SAMPLE SIZES! 17 and 12 #slay 
+      #need to figure out how to remove NA from date graph
+```
+
+```{r}
+#ANOVA formula, something like this: spad ~ treatment + block
+
+#xploring spad data: 
+
+#reclassifying date as factor, like with the soil moisture: 
+spad_mean <- SPAD_mean |> mutate(Date = as.factor(Date), levels(c(2026-10-08, 2026-10-15)))
+
+#boxplots and histograms and sample size oh my!: 
+
+#boxplots, treatment and date: 
+spad_mean |> ggplot() + aes(x = Treatment, y = leaf_mean) + geom_boxplot()
+spad_mean |> ggplot() + aes(x = Date, y = leaf_mean) + geom_boxplot()
+
+#histogram: 
+spad_mean |> ggplot() + aes(x = leaf_mean) + geom_histogram()
+
+#smaple sizes: 
+spad_mean |> group_by(Date) |> summarize (count = n())
+spad_mean |> group_by(Treatment) |> summarize (count = n())
+
+
+#takeaways: 
+          #spad values for all treatment types have narrow ranges and are pretty clustered around their means. low variation overall here, treatment might not have a great impact on SPAD levels 
+          #AC treatment has a couple of outliers, OS has 2 very low outliers
+          #Date also doesn't show any significant differences! the mean spad value for each date are pretty close to each other, and don't have super large ranges. 
+          #first date has 4 outliers , second date has none- does rain consolidate SPAD values?? 
+          #majority of mean values fall between 20 and 40, about 4 outliers- 2 on each edge. 
+          #date and treatments both have similar sample sizes #hooray
+```
+
+```{r}
+
+#conductance vs. transpiration: 
+licor_date |> group_by(treatment) |> ggplot() + aes(x = transpiration, y = conductance) + geom_point() + ylim(-.5, .5) + xlim(-5, 5)
+
+#takeaways: 
+        # conductance and transpiration are very aligned with a couple of crazy conductance outliers- y and x lim are to zoom in on area without outliers. this makes sense, high conductance = more stomata open, more stomata open = more transpiration happening. kinda nothing burger 
+
+
+
+```
+
+```{r}
+#doing some freak shit: 
+
+spad_mean <- spad_mean |> rename(tag_num = Tag_Num)
+
+test_join <- full_join(licor_date, spad_mean, by = "tag_num", relationship = "many-to-many" )
+
+view(test_join)
+```
+
+```{r}
+
+#looking at transpiration values vs average spad: 
+test_join |> ggplot() + aes(x = transpiration, y = leaf_mean, color = treatment) + 
+  geom_point() + xlim(-5.5, 4) + ylim(18, 47)
+
+test_join |> ggplot() + aes(x = conductance, y = leaf_mean, color = treatment) + 
+  geom_point() + xlim(-0.5, .5) + ylim(18, 46)
+
+
+#takeaways: 
+          #ummm there doesnt seem to be an obvious correlation or pattern between spad values and conductor or spad and transpiration- can't look at it too closely since each SPAD value is replicated 3 times >_> 
 
 ```
