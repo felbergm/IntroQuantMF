@@ -144,7 +144,7 @@ In this section we will look at and clean up each of the data sets you identifie
 
 ### ANOVA + regression dataset
 
-**Sorry I accidentally cleaned all of my datasets and explored the LICOR one within this one section. It's messy but I clean the SPAD, Moist, and LICOR datasets.**
+**Sorry I accidentally cleaned all of my datasets and explored the LICOR one within this one section. It's messy but I clean the SPAD, Moist, and LICOR datasets. Takeaways of the graphs I create are at the bottom of each associated code block and also labeled in the outline:**
 
 **Basic cleaning steps:** delete columns, rename columns, convert all datatypes to the appropriate one (date, numerical, factor), calculate means for each observation for SPAD and Moisture, make sure nothing breaks
 
@@ -164,7 +164,7 @@ Moist_no_col <- Moist_Data_Raw |>  select(Date, Block, Treatment, VWC1_perc, VWC
 Licor_no_col <- LICOR_Data_Raw |> select(SYS_Date_YYYYMMDD, `USERDEF_Block Number_NA`, `USERDEF_Tag Number_NA`,  Treatment_NA_NA, `PORO_gsw_mol+1m-2s-1`, `PORO_E_apparent_mmol+1m-2s-1`)
 ```
 
-cleaning up LICOR and exploring it:
+### graphs: cleaning up LICOR and exploring it:
 
 ```{r}
 #LICOR: 
@@ -221,6 +221,7 @@ licor_date |> group_by(treatment) |> summarize(count = n())
   #looking at observations per block 7, 8, and 6 kinda have  more than the other blocks
   #treatments have similar samples sizes 
   #extra treatments: ?? and NA, might need to fix later
+
   #Date doesn't show any dramatic differences in transpiration or conductance, rain seems to have had no effect? 
   #TRANSPIRATION: AC, DT and NR all have similar spreads and kind of similar means, all have outliers too. OS has a much wider range, no outliers. 
   #boxplot for conductance v. treatment is wicked fucked up. INSANE outliers in OS that I need to find 
@@ -257,6 +258,8 @@ moist_mean <- moist_date |> rowwise() |> mutate(vwc_mean = mean(
 
 ```
 
+### graphs: exploring spad data: 
+
 exploring spad sample sizes, creating column with average spad value for each row, and making some boxplots:
 
 ```{r}
@@ -283,6 +286,8 @@ SPAD_mean |> ggplot() + aes(x = Treatment, y = leaf_mean) +
   #will have to find a way to take the mean across all leaves!!!!
   #leaf means: block 3 has crazy crazy outliers
   #leaf means: open space has 2 outliers 
+  #SPAD doesnt seem to change a lot across blocks- meaning it doens't change a lot with date + rain addition 
+  #SPAD also doesn't seem to change with treatment type either- all the means are pretty close together and overall ranges are clustered around the mean,,, do our treatments just have no effect on SPAD? SPAD's influenced by something else? 
 ```
 
 In this next chunk, generate a cleaned data set following the example below. As you examine your raw data and find things to fix, add a #Note to create a list of things to fix up. You can then use pipes and write code to fix each thing in your checklist. This is also where if you identified `filters` or data computations in your Hypothesis worksheet (e.g., choose only one species), you can apply those.
@@ -326,9 +331,7 @@ Not sure where to start?
 
 Go for it!
 
-```{r}
-
-```
+### graphs: exploring soil moisture data: 
 
 reclassify moisture date data to be a factor, then exploring with a bunch of boxplots and histograms and taking sample sizes:
 
@@ -354,13 +357,17 @@ moist_mean |> group_by(Date) |> summarize(count = n())
 
 moist_mean |> ggplot() + aes(x = vwc_mean) +geom_histogram()
 
+
 #takeaways: 
-      #HUGE difference in average moisture observaitons between rain storm, blcoks 1-4 are super dry while 5-8 are super wet. #rainmoment 
-      #huge variance in soil moisture when divided by treatment- might not be that reliable to analyze 
-      #natural recruit has super low moisture range --> THERES ONLY 3 SAMPLES FOR NATURAL RECRUITS!!!! BRUH!!! 
-      #blocks have more equal sample sizes, block 5 only has 2 though.... hrm... also a bunch of NA's --> DATES HAVE PRETTY SIMILAR SAMPLE SIZES! 17 and 12 #slay 
-      #need to figure out how to remove NA from date graph
+      #HUGE difference in average moisture observaitons between rain storm, blocks 1-4 are super dry while 5-8 are super wet. #rainmoment 
+      #huge variance in soil moisture when divided by treatment- might not be that reliable to analyze
+      #natural recruit has super low moisture range and is very clustered around its mean --> THERES ONLY 3 SAMPLES FOR NATURAL RECRUITS!!!! BRUH!!! 
+      #OS has the largest range? water percolation is different within the open spaces maybe? 
+      #DATES HAVE PRETTY SIMILAR SAMPLE SIZES! 17 and 12 #slay 
+      #need to figure out how to remove NA from date graph...
 ```
+
+### graphs: exploring spad averages: 
 
 ```{r}
 #ANOVA formula, something like this: spad ~ treatment + block
@@ -385,7 +392,7 @@ spad_mean |> group_by(Treatment) |> summarize (count = n())
 
 
 #takeaways: 
-          #spad values for all treatment types have narrow ranges and are pretty clustered around their means. low variation overall here, treatment might not have a great impact on SPAD levels 
+          #average spad values for all treatment types have narrow ranges and are pretty clustered around their means. low variation overall here, treatment might not have a great impact on SPAD levels 
           #AC treatment has a couple of outliers, OS has 2 very low outliers
           #Date also doesn't show any significant differences! the mean spad value for each date are pretty close to each other, and don't have super large ranges. 
           #first date has 4 outliers , second date has none- does rain consolidate SPAD values?? 
@@ -393,39 +400,143 @@ spad_mean |> group_by(Treatment) |> summarize (count = n())
           #date and treatments both have similar sample sizes #hooray
 ```
 
+## **fair warning i just start doing whatever here:** 
+
+### graphs: conductance vs. transpiration point plot: 
+
 ```{r}
 
 #conductance vs. transpiration: 
-licor_date |> group_by(treatment) |> ggplot() + aes(x = transpiration, y = conductance) + geom_point() + ylim(-.5, .5) + xlim(-5, 5)
+licor_date |> group_by(treatment) |> ggplot() + aes(x = transpiration, y = conductance) + geom_point() + ylim(-.5, .5) + xlim(-5, 5) +
+  geom_smooth(method = "lm")
+
+#wrapped by treatment 
+licor_date |> group_by(treatment) |> ggplot() + aes(x = transpiration, y = conductance) + geom_point() + ylim(-.5, .5) + xlim(-5, 5) +
+  geom_smooth(method = "lm")+ facet_wrap(~treatment) 
+
 
 #takeaways: 
-        # conductance and transpiration are very aligned with a couple of crazy conductance outliers- y and x lim are to zoom in on area without outliers. this makes sense, high conductance = more stomata open, more stomata open = more transpiration happening. kinda nothing burger 
-
+        # conductance and transpiration are very aligned with a couple of crazy conductance outliers- y and x lim are to zoom in on area without outliers. this makes sense, high conductance = more stomata open, more stomata open = more transpiration happening. kinda nothing burger.... but still good to see! i love seeing things! 
+        #divided by treatment gives yo the same thing for every single treatment, so none of the treatments are disrupting this well known relationship i guess! 
 
 
 ```
 
 ```{r}
-#doing some freak shit: 
+#doing some freak activities and combining all of my datasets: 
 
 spad_mean <- spad_mean |> rename(tag_num = Tag_Num)
 
-test_join <- full_join(licor_date, spad_mean, by = "tag_num", relationship = "many-to-many" )
+test_licor <- licor_date|> group_by(tag_num, treatment) |> mutate(trans_mean = mean(transpiration), conduct_mean = mean(conductance))
+
+test_join <- full_join(test_licor, spad_mean, by = "tag_num", relationship = "many-to-many" )
 
 view(test_join)
 ```
 
 ```{r}
 
-#looking at transpiration values vs average spad: 
-test_join |> ggplot() + aes(x = transpiration, y = leaf_mean, color = treatment) + 
-  geom_point() + xlim(-5.5, 4) + ylim(18, 47)
+#trying to add soil moisture to my terrible abomination: 
 
-test_join |> ggplot() + aes(x = conductance, y = leaf_mean, color = treatment) + 
-  geom_point() + xlim(-0.5, .5) + ylim(18, 46)
+moist_mean <- moist_mean |> rename(block = Block, treatment = Treatment)
+
+crazy_join <- full_join(test_join, moist_mean, by = c("block", "treatment"), relationship = "many-to-many")
+
+view(crazy_join)
+```
+
+### graphs: strange plots between avg transpiration and avg spad, avg conductance and avg spad: 
+
+```{r}
+
+#looking at transpiration values vs average spad: 
+test_join |> ggplot() + aes(x = trans_mean, y = leaf_mean) + 
+  geom_point() + xlim(-5.5, 4) + ylim(18, 47) + 
+  geom_smooth(method = "lm") + facet_wrap(~treatment)
+
+test_join |> ggplot() + aes(x = conduct_mean, y = leaf_mean) + 
+  geom_point() + xlim(-0.25, .25) + ylim(18, 46) + 
+  geom_smooth(method = "lm") + facet_wrap(~treatment)
 
 
 #takeaways: 
-          #ummm there doesnt seem to be an obvious correlation or pattern between spad values and conductor or spad and transpiration- can't look at it too closely since each SPAD value is replicated 3 times >_> 
+          # there doesnt seem to be an obvious correlation or pattern between spad values and conductor or spad and transpiration- can't look at it too closely since each SPAD value is replicated 3 times because of my strange joins >_> 
+          #divying them up by treatment doesn't seem to add a whole lot either, outlier in AC seems to be making a downward slope in the line? there are very subtle slopes on these linear regressions though
+          #DT and OS  have very slight positive slopes, NR is flatter- probably due to more NR data points though, theres only like 6 for the other ones--> try these again but NOT with the averages? 
 
+```
+
+### graphs: avg vwc vs. avg transpiraiton, divided by treatment + some regression things: 
+
+```{r}
+
+crazy_join |> ggplot() + aes(x = vwc_mean, y = trans_mean, color = treatment) + 
+  geom_point() + geom_smooth(method = "lm")
+
+#lets try a regression i guess! 
+
+trans_soil.lm <- lm(vwc_mean ~ trans_mean*date, data = crazy_join)
+
+plot(trans_soil.lm)
+
+#what happens if i log it: 
+ 
+log_ts.lm <- lm(log(vwc_mean) ~ log(trans_mean), data = crazy_join)
+
+plot(log_ts.lm)
+
+
+#takeaways: 
+          #not a whole lot going on with the point plot, but the open space seems to have the most downward sloping line? DT and AC are pretty straight, NR is incredibly clustered- maybe something going on with OS? 
+          #residuals vs fitted for vwc mean ~ trans mean * date looks better than i thought it would! QQ doesn't look great - neither improve that much when logging them and R throws a warning at me :/ 
+          #might have to pick different variables for the regression, or maybe change formula? 
+```
+
+### graphs: strange and sinister ANOVA experiments: 
+
+```{r}
+
+licor_anova_model <-lm(transpiration ~ treatment + block, data = licor_date)
+
+plot(licor_anova_model)
+ggpubr::ggqqplot(residuals(licor_anova_model))
+
+licor_anova <- aov(licor_anova_model)
+
+summary(licor_anova)
+
+TukeyHSD(licor_anova)
+
+#seperating by date: 
+licor_date_split <- licor_date |> filter(block == '001' | block == '002' | block == '003' |block == '004' )
+
+licor_dry_model <-lm(transpiration ~ treatment + block, data = licor_date_split)
+
+plot(licor_dry_model)
+
+licor_anova_dry <- aov(licor_dry_model)
+
+summary(licor_anova_dry)
+
+TukeyHSD(licor_anova_dry)
+
+#wet: 
+licor_date_split_wet <- licor_date |> filter(block == '005' | block == '006' | block == '007' |block == '008' )
+
+licor_wet_model <-lm(transpiration ~ treatment + block, data = licor_date_split_wet)
+
+plot(licor_wet_model)
+
+licor_anova_wet <- aov(licor_wet_model)
+
+summary(licor_anova_wet)
+
+TukeyHSD(licor_anova_wet)
+
+#takeaways: 
+          #residuals graph looks way better than i thought it would! my line is pretty flat! QQ startrs to deviate on the two tails but also a lot better than expected 
+          #block seems to have a super large effect in the anova model, need to seperate by date probably 
+          #residuals for both wet and dry observations look good, QQs still deviate at tails
+          #looking at just dry licor observations: the impact of treatment suddenly drops? 
+          #treatment has the most significant impact when only looking at the wet observations??? would this be because of the rainstorm between observations? or do the effects of the treatments just become more apparent when its wet???? 
 ```
