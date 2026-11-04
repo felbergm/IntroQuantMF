@@ -258,7 +258,7 @@ moist_mean <- moist_date |> rowwise() |> mutate(vwc_mean = mean(
 
 ```
 
-### graphs: exploring spad data: 
+### graphs: exploring spad data:
 
 exploring spad sample sizes, creating column with average spad value for each row, and making some boxplots:
 
@@ -331,7 +331,7 @@ Not sure where to start?
 
 Go for it!
 
-### graphs: exploring soil moisture data: 
+### graphs: exploring soil moisture data:
 
 reclassify moisture date data to be a factor, then exploring with a bunch of boxplots and histograms and taking sample sizes:
 
@@ -367,7 +367,7 @@ moist_mean |> ggplot() + aes(x = vwc_mean) +geom_histogram()
       #need to figure out how to remove NA from date graph...
 ```
 
-### graphs: exploring spad averages: 
+### graphs: exploring spad averages:
 
 ```{r}
 #ANOVA formula, something like this: spad ~ treatment + block
@@ -400,9 +400,9 @@ spad_mean |> group_by(Treatment) |> summarize (count = n())
           #date and treatments both have similar sample sizes #hooray
 ```
 
-## **fair warning i just start doing whatever here:** 
+## **fair warning i just start doing whatever here:**
 
-### graphs: conductance vs. transpiration point plot: 
+### graphs: conductance vs. transpiration point plot:
 
 ```{r}
 
@@ -445,7 +445,7 @@ crazy_join <- full_join(test_join, moist_mean, by = c("block", "treatment"), rel
 view(crazy_join)
 ```
 
-### graphs: strange plots between avg transpiration and avg spad, avg conductance and avg spad: 
+### graphs: strange plots between avg transpiration and avg spad, avg conductance and avg spad:
 
 ```{r}
 
@@ -466,7 +466,7 @@ test_join |> ggplot() + aes(x = conduct_mean, y = leaf_mean) +
 
 ```
 
-### graphs: avg vwc vs. avg transpiraiton, divided by treatment + some regression things: 
+### graphs: avg vwc vs. avg transpiraiton, divided by treatment + some regression things:
 
 ```{r}
 
@@ -492,7 +492,7 @@ plot(log_ts.lm)
           #might have to pick different variables for the regression, or maybe change formula? 
 ```
 
-### graphs: strange and sinister ANOVA experiments: 
+### graphs: strange and sinister ANOVA experiments:
 
 ```{r}
 

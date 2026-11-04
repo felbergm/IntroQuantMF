@@ -1,0 +1,542 @@
+---
+title: "Oaks_Cleaning_EDA_template"
+author: Amy King-Henry
+datemodified: October 29, 2026
+format: html
+editor: visual
+---
+
+# Oaks Exploratory Data Analysis
+
+For your final project analysis, you have been placed into groups, within which you can collaborate and help each other. Within your group, you will divide up the different data that is available to ask questions. You are required to address TWO questions each.
+
+1.  An ANOVA/GLM question that addresses the impact of the experimental treatments on a measured variable (SPAD, stomatal conductance, or height) in one of the two plant species.
+2.  A question of your choice that analyzes one of the regression variables (soil moisture, slope, aspect, etc.), past year data, or an interaction within the experiment.
+
+The following worksheet will guide you through developing your research questions, hypotheses, and analysis approach.
+
+### Load your packages
+
+```{r}
+library(tidyverse)
+library(readxl)   #reads excel files 
+```
+
+### Import all the data
+
+```{r}
+#reading excel files: 
+Height_Data_Raw <- 
+  read_excel("Oak Data Entry MCRS Field Trip.xlsx", 
+             sheet = "Seedling Heights")
+
+Moist_Data_Raw <- 
+  read_excel("Oak Data Entry MCRS Field Trip.xlsx", 
+             sheet = "Soil Moisture")
+
+SPAD_Data_Raw <- 
+  read_excel("Oak Data Entry MCRS Field Trip.xlsx", 
+             sheet = "SPAD", 
+             na = "NA")  #tells it to read NA as missing data 
+```
+
+**Amy gives the gift of importing the LICOR objects for you:**
+
+```{r}
+LICOR_Data_Raw_NAMES <- 
+  read_excel("Oak Data Entry MCRS Field Trip.xlsx",              
+             sheet = "LICOR", 
+             n_max = 3,           #takes only the first three rows of the sheet
+             col_names = FALSE,   #dont import each column name 
+             col_types = "text") |>  #import each collumn as text
+  summarise(across(.fns = paste, collapse = "_")) |>  #collapses across multiple rows
+#paste = takes two cells and puts them into the same one, one right after another 
+#collapse is delimeter, symbol put in between them 
+  unlist() |> 
+  unname()  #makes this into a vector of character strings, instead of a data frame
+
+LICOR_Data_Raw <- 
+  read_excel("Oak Data Entry MCRS Field Trip.xlsx",  
+             sheet = "LICOR", 
+             skip = 3,   #skips first 3 rows 
+             col_names = LICOR_Data_Raw_NAMES, #replaces column names with the name vector from before, instead of names from the sheet 
+             col_types = "text")
+
+
+ALL_Licor_NAMES <- 
+  read_excel("Oak Data Entry MCRS Field Trip.xlsx", 
+             sheet = "ALL_Licor_Ignore", 
+             n_max = 3, 
+             col_names = FALSE, 
+             col_types = "text") |> 
+  summarise(across(.fns = paste, collapse = "_")) |> 
+  unlist() |> 
+  unname()
+
+ALL_Licor <- 
+  read_excel("Oak Data Entry MCRS Field Trip.xlsx", 
+             sheet = "ALL_Licor_Ignore", 
+             skip = 3, 
+             col_names = ALL_Licor_NAMES, 
+             col_types = "text")
+
+LICOR_Data_Raw <- full_join(LICOR_Data_Raw, ALL_Licor)  #joins dataframes together using certain keys! matches data entries together based on an identifier collumn 
+
+#inner_join = joins the data that is shared between dataframes, gets rid of ones that dont have match 
+#left_join = joins only according to the first dataframe, ignores the one in the second 
+#full join = joins along identifier rows, keeps copies of them all and puts NAs where there aren't matches 
+```
+
+## Exploratory Data Analysis:
+
+Before you can analyze your specific questions, you need to clean up and get a sense of the data. Exploratory Data Analysis has the following goals:
+
+1.  **Generate questions about your data.**
+
+    1.  [This is not just about your research questions!]{.underline} Questions might include: how many samples are there for each treatment? Why is there a weird outlier in that one variable? Why won't this variable plot?
+
+    2.  More interesting questions might include: Is there a relationship between these variables? Why is there a pattern where one is higher in only that variable?
+
+2.  **Search for answers by visualizing, transforming, and modelling your data.**
+
+    1.  You can identify problems (like outliers or NA values) by plotting data, or transforming and manipulating it. Answers might include: That outlier was entered incorrectly from the original datasheets, OR it keyed to the wrong species; This variable won't plot because R originally read it in as a character instead of a number (and some lines had words entered instead of NA). You can use these answers to
+
+    2.  Visualizing = plotting, transforming = calculating new variables, log transformations, etc. and modelling = fitting linear models/ANOVA tests to the data.
+
+3.  **Use what you learn to refine your questions and/or generate new questions.**
+
+    1.  Let this lead you! Maybe you find a relationship between two variables. Does that mean there is also a relationship with a third variable? Check it out! Today is about looking at EVERYTHING, not just your specific research question.
+
+## Data Cleaning
+
+### How to Examine and Clean Data
+
+In this section we will look at and clean up each of the data sets you identified that you would like to analyze in your research questions. What to look for when data cleaning:
+
+1.  Dimensions
+    1.  Does the data have the right number of rows? Are there blank rows of NAs at the bottom that need to be removed?
+        - `nrow()`, `dim()`, `glimpse()` to view counts of rows
+    2.  Do you have all the columns you need? Do you need to bring in additional information for context?
+        - `ncol()`, `str()`, `names()`, `glimpse()` to view column numbers and names
+        - `full_join()`, `inner_join()`, `left_join()` etc. to merge with other data based on matching columns
+        - Are there columns you won't use that you'd like to exclude for simplicity using `select()`
+2.  Column names
+    1.  Are your column names tidy (i.e., have no punctuation or spaces, consistent capitals)?
+        - `rename()` to fix column names
+        - Recommendation: rename some of those messy LICOR columns to more useful and memorable ones!
+3.  Data types
+    1.  Are your columns in the correct format?
+        - `typeof(data$variable)` or `glimpse()` to check column data type
+        - `mutate(variable = as.numeric())` to convert to numeric
+        - `mutate(variable = as.character())` to convert to string/word
+        - `mutate(variable = factor())` to convert to factor
+    2.  Do the values in your columns all match the format you want? (e.g., are there characters in a numeric column?
+        - `unique(data$variable)` to see all unique values in that column
+        - `mutate(variable = case_when([see Data Wrangling demo]))` to repair
+    3.  Are there any cells that contain two kinds of information and may need to be separated? (e.g. Tag_Num that also includes sapling A/B or A1, A2, or A3)
+        - `separate()` to create two new columns by splitting the data based on a delimiter
+4.  Irregular Values
+    1.  Do all the values make sense for your data set (e.g., outliers)
+        1.  `summary(df$variable)` gives the min & max and other values to see IF there is a weird value
+        2.  `which(df$variable == 102.0)` gives the ROW NUMBER of any rows that have that value
+        3.  If you find something weird, check it against the original data sheets, correct or remove with `filter()` if appropriate.
+        4.  View your data with histograms.
+
+### ANOVA + regression dataset
+
+**Sorry I accidentally cleaned all of my datasets and explored the LICOR one within this one section. It's messy but I clean the SPAD, Moist, and LICOR datasets. Takeaways of the graphs I create are at the bottom of each associated code block and also labeled in the outline:**
+
+**Basic cleaning steps:** delete columns, rename columns, convert all datatypes to the appropriate one (date, numerical, factor), calculate means for each observation for SPAD and Moisture, make sure nothing breaks
+
+You may be either examining `SPAD_Data_Raw`, `Height_Data_Raw`, `LICOR_Data_Raw`, or `Moist_Data_Raw` for your ANOVA question. Examine your data set using the diagnostic functions I've given you above in the How to Examine and Clean Data section.
+
+Keeping only columns I want from datasets:
+
+```{r}
+
+#keeping only collumns I want from SPAD: 
+SPAD_no_col <- SPAD_Data_Raw |> select(Date, Block, Treatment, Tag_Num, Leaf1, Leaf2, Leaf3, Leaf4, Leaf5, Leaf6) 
+
+#keeping only good collumns from Moist: 
+Moist_no_col <- Moist_Data_Raw |>  select(Date, Block, Treatment, VWC1_perc, VWC2_perc, VWC3_perc)
+
+#keeping good LICOR collumns 
+Licor_no_col <- LICOR_Data_Raw |> select(SYS_Date_YYYYMMDD, `USERDEF_Block Number_NA`, `USERDEF_Tag Number_NA`,  Treatment_NA_NA, `PORO_gsw_mol+1m-2s-1`, `PORO_E_apparent_mmol+1m-2s-1`)
+```
+
+### graphs: cleaning up LICOR and exploring it:
+
+```{r}
+#LICOR: 
+#renaming collumns
+LICOR_rename <- Licor_no_col |> rename(date = SYS_Date_YYYYMMDD , 
+          block = `USERDEF_Block Number_NA`, 
+          treatment = Treatment_NA_NA , 
+          conductance = `PORO_gsw_mol+1m-2s-1`, 
+          transpiration = `PORO_E_apparent_mmol+1m-2s-1`, 
+          tag_num = `USERDEF_Tag Number_NA`)
+
+#checking data type: -LICOR data is all character type :/ 
+LICOR_datatype <- LICOR_rename |> mutate(treatment = as.factor(treatment)) #convert 2 factor 
+LICOR_datatype <- LICOR_datatype |> mutate(across
+                                           (c(conductance, transpiration), 
+                                             as.numeric)) #converting 2 numerical 
+#converting date to factor
+licor_date <- LICOR_datatype |> mutate(date = as.factor(date), levels(c(2026-10-08, 2026-10-15)))
+
+#exploring licor data: 
+#conductance: 
+ggplot(licor_date) + aes(x = conductance) + geom_histogram() + xlim(-0.25, 0.25)
+
+ggplot(licor_date) + aes(x = date, y = conductance) + geom_boxplot() + ylim(-.25,.25)
+
+ggplot(licor_date) + aes(x = treatment, y = conductance) + geom_boxplot()
+
+
+licor_date|> filter(block == "4.0") #xamining where theres a random 4.0 block?? somebody put in a 4.0 block with no data?? why did they do this
+
+
+#transpiratoin
+ggplot(licor_date) + aes(x = transpiration) + geom_histogram()
+
+ggplot(licor_date) + aes(x = date, y = transpiration) + geom_boxplot()
+
+ggplot(licor_date) + aes(x = treatment, y = transpiration) + geom_boxplot() + 
+  ylim(2.5, -2.5)
+
+
+#samples sizes: 
+licor_date |> group_by(block) |> summarize(count = n()) 
+
+licor_date |> group_by(treatment) |> summarize(count = n()) 
+
+
+
+
+#takeaways: 
+  #there are two HUGE outliers in the conducance values, normal values fall between -.25 and .25 
+  #trans data seems good! maybe one large outlier near 10
+  #there seems to be an extra block- block 4.0? one row 
+  #transpiration outliers in blocks 3 and 7 
+  #looking at observations per block 7, 8, and 6 kinda have  more than the other blocks
+  #treatments have similar samples sizes 
+  #extra treatments: ?? and NA, might need to fix later
+
+  #Date doesn't show any dramatic differences in transpiration or conductance, rain seems to have had no effect? 
+  #TRANSPIRATION: AC, DT and NR all have similar spreads and kind of similar means, all have outliers too. OS has a much wider range, no outliers. 
+  #boxplot for conductance v. treatment is wicked fucked up. INSANE outliers in OS that I need to find 
+  #CONDUCTANCE: once again OS has a wider range than others, no outliers other than the insane 2. AC, DT, and NR's means are closer together 
+  #NA TREATMENT IS PISSING ME OFF!!!! i might go in and manually fill some things out because cross referencing the sheets <-- EMAIL AMY LATER!!! 
+
+```
+
+messing with datatypes, I reclassify the date columns to be Date data but then change them to factors later to make graphing easier. I also create a column with average soil moisture per row:
+
+```{r}
+#testing converting dates in LICOR to a date time datatype 
+
+licor_date <- LICOR_datatype |> mutate(date = as.factor(date), levels(c(2026-10-08, 2026-10-15)))
+glimpse(LICOR_date)
+
+
+#changing spad dates 
+SPAD_date <- SPAD_no_col |> mutate(Date = as.Date(Date))
+
+glimpse(SPAD_date)
+
+#moist data: 
+moist_date <- Moist_no_col |> mutate(Date = as.Date(Date))
+#converting moist numbers from character 2 number 
+moist_date <- moist_date |> mutate(across(c(VWC1_perc, VWC2_perc, VWC3_perc), as.numeric))
+glimpse(moist_date)
+
+#adding a new collumn that averages vwc across rows, so theres a single value per observation: 
+moist_mean <- moist_date |> rowwise() |> mutate(vwc_mean = mean(
+  c(VWC1_perc, VWC2_perc, VWC3_perc), na.rm = TRUE
+)) |> ungroup() 
+
+
+```
+
+### graphs: exploring spad data:
+
+exploring spad sample sizes, creating column with average spad value for each row, and making some boxplots:
+
+```{r}
+#xploring SPAD: 
+
+#sample size
+SPAD_date |> group_by(Block) |> summarize(count = n()) 
+SPAD_date |> group_by(Treatment) |> summarize(count = n()) 
+
+#trying to make new collumn with mean across all leaves: 
+SPAD_mean <- SPAD_date |> rowwise() |> mutate(leaf_mean = mean(
+  c(Leaf1, Leaf2, Leaf3, Leaf4, Leaf5, Leaf6), na.rm = TRUE
+)) |> ungroup() 
+
+#histos: 
+SPAD_mean |> ggplot() + aes(x = Block, y = leaf_mean) +
+  geom_boxplot()
+
+SPAD_mean |> ggplot() + aes(x = Treatment, y = leaf_mean) +
+  geom_boxplot()
+
+#takeaways: 
+  #blocks and treatments both have similar sample sizes, yay 
+  #will have to find a way to take the mean across all leaves!!!!
+  #leaf means: block 3 has crazy crazy outliers
+  #leaf means: open space has 2 outliers 
+  #SPAD doesnt seem to change a lot across blocks- meaning it doens't change a lot with date + rain addition 
+  #SPAD also doesn't seem to change with treatment type either- all the means are pretty close together and overall ranges are clustered around the mean,,, do our treatments just have no effect on SPAD? SPAD's influenced by something else? 
+```
+
+In this next chunk, generate a cleaned data set following the example below. As you examine your raw data and find things to fix, add a #Note to create a list of things to fix up. You can then use pipes and write code to fix each thing in your checklist. This is also where if you identified `filters` or data computations in your Hypothesis worksheet (e.g., choose only one species), you can apply those.
+
+One specific thing you may need to do is JOIN two of the datasets, using common columns to match observations to each other. In the field, we recorded `Tag_Num`, `Seedling_AB_etc`, and `Block` as unique observations to identify trees across multiple datasets. Trees which were measured in multiple ways can be used to run a regression analysis.
+
+Read about joins here: <https://r4ds.hadley.nz/joins>
+
+Check out the illustrative animations on this page: <https://github.com/gadenbuie/tidyexplain?tab=readme-ov-file#mutating-joins>
+
+```{r}
+  
+```
+
+### Regression dataset
+
+Repeat the steps you took for your ANOVA data for your second data set of choice/
+
+```{r}
+# View data set
+```
+
+```{r}
+   
+  #Things to Fix
+```
+
+## Exploratory Data Analysis
+
+Now that your data is (probably, mostly!) clean, it is time to explore your data! Feel free to explore not just the variables/data set relevant to your research question, but to explore variables your teammates are examining as well. Use this space to generate more questions, identify if there are more things to fix in your data cleaning, etc.
+
+Not sure where to start?
+
+- Make a histogram of each variable and write down your observations
+
+- Plot variables against each other to explore relationships (boxplots and scatterplots are a good starting point)
+
+- Use facet_grid to explore different groupings of data
+
+**There are no wrong answers! If you make 3+ graphs and show you're thinking critically about them, you will get full credit for this assignment.**
+
+Go for it!
+
+### graphs: exploring soil moisture data:
+
+reclassify moisture date data to be a factor, then exploring with a bunch of boxplots and histograms and taking sample sizes:
+
+```{r}
+####FINAL CLEANED DATASETS: 
+#moist_mean, spad_mean, licor_date 
+############################################################
+
+#trying to make r read the date field better, reclassing as a factor:
+moist_mean <- moist_mean |> mutate(Date = as.factor(Date), levels(c(2026-10-08, 2026-10-15)))
+
+#xploring moist data: 
+moist_mean |>  ggplot() + aes(x = Date, y = vwc_mean) +
+  geom_boxplot()
+
+moist_mean |> ggplot() + aes(x = Treatment, y = vwc_mean) +
+  geom_boxplot()
+
+#checking sample sizes by treatment type, since my boxplot looks weird: 
+moist_mean |> group_by(Treatment) |> summarize(count = n())
+#sample size by block: 
+moist_mean |> group_by(Date) |> summarize(count = n())
+
+moist_mean |> ggplot() + aes(x = vwc_mean) +geom_histogram()
+
+
+#takeaways: 
+      #HUGE difference in average moisture observaitons between rain storm, blocks 1-4 are super dry while 5-8 are super wet. #rainmoment 
+      #huge variance in soil moisture when divided by treatment- might not be that reliable to analyze
+      #natural recruit has super low moisture range and is very clustered around its mean --> THERES ONLY 3 SAMPLES FOR NATURAL RECRUITS!!!! BRUH!!! 
+      #OS has the largest range? water percolation is different within the open spaces maybe? 
+      #DATES HAVE PRETTY SIMILAR SAMPLE SIZES! 17 and 12 #slay 
+      #need to figure out how to remove NA from date graph...
+```
+
+### graphs: exploring spad averages:
+
+```{r}
+#ANOVA formula, something like this: spad ~ treatment + block
+
+#xploring spad data: 
+
+#reclassifying date as factor, like with the soil moisture: 
+spad_mean <- SPAD_mean |> mutate(Date = as.factor(Date), levels(c(2026-10-08, 2026-10-15)))
+
+#boxplots and histograms and sample size oh my!: 
+
+#boxplots, treatment and date: 
+spad_mean |> ggplot() + aes(x = Treatment, y = leaf_mean) + geom_boxplot()
+spad_mean |> ggplot() + aes(x = Date, y = leaf_mean) + geom_boxplot()
+
+#histogram: 
+spad_mean |> ggplot() + aes(x = leaf_mean) + geom_histogram()
+
+#smaple sizes: 
+spad_mean |> group_by(Date) |> summarize (count = n())
+spad_mean |> group_by(Treatment) |> summarize (count = n())
+
+
+#takeaways: 
+          #average spad values for all treatment types have narrow ranges and are pretty clustered around their means. low variation overall here, treatment might not have a great impact on SPAD levels 
+          #AC treatment has a couple of outliers, OS has 2 very low outliers
+          #Date also doesn't show any significant differences! the mean spad value for each date are pretty close to each other, and don't have super large ranges. 
+          #first date has 4 outliers , second date has none- does rain consolidate SPAD values?? 
+          #majority of mean values fall between 20 and 40, about 4 outliers- 2 on each edge. 
+          #date and treatments both have similar sample sizes #hooray
+```
+
+## **fair warning i just start doing whatever here:**
+
+### graphs: conductance vs. transpiration point plot:
+
+```{r}
+
+#conductance vs. transpiration: 
+licor_date |> group_by(treatment) |> ggplot() + aes(x = transpiration, y = conductance) + geom_point() + ylim(-.5, .5) + xlim(-5, 5) +
+  geom_smooth(method = "lm")
+
+#wrapped by treatment 
+licor_date |> group_by(treatment) |> ggplot() + aes(x = transpiration, y = conductance) + geom_point() + ylim(-.5, .5) + xlim(-5, 5) +
+  geom_smooth(method = "lm")+ facet_wrap(~treatment) 
+
+
+#takeaways: 
+        # conductance and transpiration are very aligned with a couple of crazy conductance outliers- y and x lim are to zoom in on area without outliers. this makes sense, high conductance = more stomata open, more stomata open = more transpiration happening. kinda nothing burger.... but still good to see! i love seeing things! 
+        #divided by treatment gives yo the same thing for every single treatment, so none of the treatments are disrupting this well known relationship i guess! 
+
+
+```
+
+```{r}
+#doing some freak activities and combining all of my datasets: 
+
+spad_mean <- spad_mean |> rename(tag_num = Tag_Num)
+
+test_licor <- licor_date|> group_by(tag_num, treatment) |> mutate(trans_mean = mean(transpiration), conduct_mean = mean(conductance))
+
+test_join <- full_join(test_licor, spad_mean, by = "tag_num", relationship = "many-to-many" )
+
+view(test_join)
+```
+
+```{r}
+
+#trying to add soil moisture to my terrible abomination: 
+
+moist_mean <- moist_mean |> rename(block = Block, treatment = Treatment)
+
+crazy_join <- full_join(test_join, moist_mean, by = c("block", "treatment"), relationship = "many-to-many")
+
+view(crazy_join)
+```
+
+### graphs: strange plots between avg transpiration and avg spad, avg conductance and avg spad:
+
+```{r}
+
+#looking at transpiration values vs average spad: 
+test_join |> ggplot() + aes(x = trans_mean, y = leaf_mean) + 
+  geom_point() + xlim(-5.5, 4) + ylim(18, 47) + 
+  geom_smooth(method = "lm") + facet_wrap(~treatment)
+
+test_join |> ggplot() + aes(x = conduct_mean, y = leaf_mean) + 
+  geom_point() + xlim(-0.25, .25) + ylim(18, 46) + 
+  geom_smooth(method = "lm") + facet_wrap(~treatment)
+
+
+#takeaways: 
+          # there doesnt seem to be an obvious correlation or pattern between spad values and conductor or spad and transpiration- can't look at it too closely since each SPAD value is replicated 3 times because of my strange joins >_> 
+          #divying them up by treatment doesn't seem to add a whole lot either, outlier in AC seems to be making a downward slope in the line? there are very subtle slopes on these linear regressions though
+          #DT and OS  have very slight positive slopes, NR is flatter- probably due to more NR data points though, theres only like 6 for the other ones--> try these again but NOT with the averages? 
+
+```
+
+### graphs: avg vwc vs. avg transpiraiton, divided by treatment + some regression things:
+
+```{r}
+
+crazy_join |> ggplot() + aes(x = vwc_mean, y = trans_mean, color = treatment) + 
+  geom_point() + geom_smooth(method = "lm")
+
+#lets try a regression i guess! 
+
+trans_soil.lm <- lm(vwc_mean ~ trans_mean*date, data = crazy_join)
+
+plot(trans_soil.lm)
+
+#what happens if i log it: 
+ 
+log_ts.lm <- lm(log(vwc_mean) ~ log(trans_mean), data = crazy_join)
+
+plot(log_ts.lm)
+
+
+#takeaways: 
+          #not a whole lot going on with the point plot, but the open space seems to have the most downward sloping line? DT and AC are pretty straight, NR is incredibly clustered- maybe something going on with OS? 
+          #residuals vs fitted for vwc mean ~ trans mean * date looks better than i thought it would! QQ doesn't look great - neither improve that much when logging them and R throws a warning at me :/ 
+          #might have to pick different variables for the regression, or maybe change formula? 
+```
+
+### graphs: strange and sinister ANOVA experiments:
+
+```{r}
+
+licor_anova_model <-lm(transpiration ~ treatment + block, data = licor_date)
+
+plot(licor_anova_model)
+ggpubr::ggqqplot(residuals(licor_anova_model))
+
+licor_anova <- aov(licor_anova_model)
+
+summary(licor_anova)
+
+TukeyHSD(licor_anova)
+
+#seperating by date: 
+licor_date_split <- licor_date |> filter(block == '001' | block == '002' | block == '003' |block == '004' )
+
+licor_dry_model <-lm(transpiration ~ treatment + block, data = licor_date_split)
+
+plot(licor_dry_model)
+
+licor_anova_dry <- aov(licor_dry_model)
+
+summary(licor_anova_dry)
+
+TukeyHSD(licor_anova_dry)
+
+#wet: 
+licor_date_split_wet <- licor_date |> filter(block == '005' | block == '006' | block == '007' |block == '008' )
+
+licor_wet_model <-lm(transpiration ~ treatment + block, data = licor_date_split_wet)
+
+plot(licor_wet_model)
+
+licor_anova_wet <- aov(licor_wet_model)
+
+summary(licor_anova_wet)
+
+TukeyHSD(licor_anova_wet)
+
+#takeaways: 
+          #residuals graph looks way better than i thought it would! my line is pretty flat! QQ startrs to deviate on the two tails but also a lot better than expected 
+          #block seems to have a super large effect in the anova model, need to seperate by date probably 
+          #residuals for both wet and dry observations look good, QQs still deviate at tails
+          #looking at just dry licor observations: the impact of treatment suddenly drops? 
+          #treatment has the most significant impact when only looking at the wet observations??? would this be because of the rainstorm between observations? or do the effects of the treatments just become more apparent when its wet???? 
+```
