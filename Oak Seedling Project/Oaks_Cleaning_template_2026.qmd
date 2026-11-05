@@ -508,9 +508,9 @@ summary(licor_anova)
 TukeyHSD(licor_anova)
 
 #seperating by date: 
-licor_date_split <- licor_date |> filter(block == '001' | block == '002' | block == '003' |block == '004' )
+licor_date_split_dry <- licor_date |> filter(block == '001' | block == '002' | block == '003' |block == '004' )
 
-licor_dry_model <-lm(transpiration ~ treatment + block, data = licor_date_split)
+licor_dry_model <-lm(transpiration ~ treatment + block, data = licor_date_split_dry)
 
 plot(licor_dry_model)
 
@@ -539,4 +539,42 @@ TukeyHSD(licor_anova_wet)
           #residuals for both wet and dry observations look good, QQs still deviate at tails
           #looking at just dry licor observations: the impact of treatment suddenly drops? 
           #treatment has the most significant impact when only looking at the wet observations??? would this be because of the rainstorm between observations? or do the effects of the treatments just become more apparent when its wet???? 
+```
+
+trying to split conductance and transpiration by wet/dry and looking at different treatment effects then:
+
+```{r}
+
+licor_date |> ggplot() + aes(x = treatment, y = transpiration) + 
+  geom_boxplot() + facet_wrap(~date)
+
+licor_date |> group_by(date, treatment) |> summarize(count = n())
+
+#t test experiment: 
+#making dataframe with just DT and OS: 
+licor_DTOS_wet <- licor_date_split_wet |> filter(treatment == "DT" | treatment == "OS") 
+
+licor_DTOS_dry <- licor_date_split_dry |> filter(treatment == "DT" | treatment == "OS") 
+
+t.test(transpiration ~ treatment, data = licor_DTOS_wet)
+
+t.test(transpiration ~ treatment, data = licor_DTOS_dry)
+
+#trying with DT and AC now: 
+
+licor_ACNR_wet <- licor_date_split_wet |> filter(treatment == "AC" | treatment == "NR") 
+
+licor_ACNR_dry <- licor_date_split_dry |> filter(treatment == "AC" | treatment == "NR") 
+
+t.test(transpiration ~ treatment, data = licor_ACNR_wet)
+
+t.test(transpiration ~ treatment, data = licor_ACNR_dry)
+```
+
+```{r}
+
+moist_mean |> group_by(Date, treatment) |> summarize(count = n())
+
+moist_mean |> ggplot() + aes(treatment, vwc_mean) +
+  geom_boxplot() + facet_wrap(~Date)
 ```
