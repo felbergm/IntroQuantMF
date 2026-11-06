@@ -1,0 +1,261 @@
+---
+title: "oak_draft_max"
+author: "Max Felberg"
+format: html
+editor: visual
+---
+
+# big yummy title 
+
+overview of analysis? hypothesis / questions?
+
+## loading in packages
+
+```{r}
+#load in packages here, just try all of them lwk
+library(tidyverse)
+library(readxl)
+```
+
+## reading data 
+
+```{r}
+#load in data files here 
+#reading excel files: 
+Height_Data_Raw <- 
+  read_excel("Oak Data Entry MCRS Field Trip.xlsx", 
+             sheet = "Seedling Heights")
+
+Moist_Data_Raw <- 
+  read_excel("Oak Data Entry MCRS Field Trip.xlsx", 
+             sheet = "Soil Moisture")
+
+SPAD_Data_Raw <- 
+  read_excel("Oak Data Entry MCRS Field Trip.xlsx", 
+             sheet = "SPAD", 
+             na = "NA")  #tells it to read NA as missing data 
+```
+
+```{r}
+#licor raw data 
+LICOR_Data_Raw_NAMES <- 
+  read_excel("Oak Data Entry MCRS Field Trip.xlsx",              
+             sheet = "LICOR", 
+             n_max = 3,           
+             col_names = FALSE, 
+             col_types = "text") |> 
+  summarise(across(.fns = paste, collapse = "_")) |>  
+  unlist() |> 
+  unname()  
+
+LICOR_Data_Raw <- 
+  read_excel("Oak Data Entry MCRS Field Trip.xlsx",  
+             sheet = "LICOR", 
+             skip = 3,   
+             col_names = LICOR_Data_Raw_NAMES, 
+             col_types = "text")
+
+
+ALL_Licor_NAMES <- 
+  read_excel("Oak Data Entry MCRS Field Trip.xlsx", 
+             sheet = "ALL_Licor_Ignore", 
+             n_max = 3, 
+             col_names = FALSE, 
+             col_types = "text") |> 
+  summarise(across(.fns = paste, collapse = "_")) |> 
+  unlist() |> 
+  unname()
+
+ALL_Licor <- 
+  read_excel("Oak Data Entry MCRS Field Trip.xlsx", 
+             sheet = "ALL_Licor_Ignore", 
+             skip = 3, 
+             col_names = ALL_Licor_NAMES, 
+             col_types = "text")
+
+LICOR_Data_Raw <- full_join(LICOR_Data_Raw, ALL_Licor) 
+```
+
+## data cleaning
+
+overview on basic data cleaning steps
+
+```{r}
+#clean licor, fill in licor data, reassign treatment type to be a factor 
+    #get rid of 4.0 block 
+    #fill in missing data parts 
+    #
+#clean soil moisture, reassing treatment type to be factor 
+
+#clean seedling height data- reassign treatment type to be factor 
+```
+
+### LICOR Data Cleaning: 
+
+```{r, LICOR CLEANING}
+
+#dropping unecessary columns: 
+LICOR1 <- LICOR_Data_Raw |> select(SYS_Date_YYYYMMDD, `USERDEF_Block Number_NA`, `USERDEF_Tag Number_NA`,  Treatment_NA_NA, `PORO_gsw_mol+1m-2s-1`, `PORO_E_apparent_mmol+1m-2s-1`)
+
+#renaming colums: 
+LICOR2 <- LICOR1 |> rename(date = SYS_Date_YYYYMMDD , 
+                           block = `USERDEF_Block Number_NA`, 
+                           treatment = Treatment_NA_NA , 
+                           conduct = `PORO_gsw_mol+1m-2s-1`, 
+                           transpir = `PORO_E_apparent_mmol+1m-2s-1`, 
+                           tagnum = `USERDEF_Tag Number_NA`)
+
+
+#reassign data types: 
+
+#treatment and block: character --> factor 
+LICOR3 <- LICOR2 |> mutate(treatment = as.factor(treatment))
+
+#date: charcter --> factor W/ levels 
+LICOR3 <- LICOR3 |> mutate(date = as.factor(date), 
+                           levels(c(2026-10-08, 2026-10-15))) #assigning levels 
+
+#block: character --> factor
+LICOR3 <- LICOR3 |> mutate(block = as.factor(block))
+
+#conductance and transpiration: character --> numeric 
+LICOR3 <- LICOR3 |> mutate(across
+                           (c(conduct, transpir), #select columns
+                             as.numeric)) #converting 2 numerical 
+
+
+glimpse(LICOR3)  #double checking work
+
+#find and get rid block 4.0: 
+LICOR4 <- LICOR3 |> filter(block != "4.0")
+```
+
+```{r}
+#terrible and sinister code block that will fill in LICOR treatment values 
+```
+
+LICOR summary table will go here i guess- make a nice one so it also includes sample sizes
+
+### Soil Moisture Data Cleaning: 
+
+```{r, SOILMOIST CLEANING}
+
+#removing unecessary columns: 
+MOIST1 <- Moist_Data_Raw |>  select(Date, Block, Treatment, VWC1_perc, VWC2_perc, VWC3_perc)
+
+#rename columns: 
+MOIST2 <- MOIST1 |> rename( mdate = Date, 
+                            mblock = Block, 
+                            mtreatment = Treatment, 
+)
+
+#reassign data type: 
+
+#date: charcter --> factor with levels 
+MOIST3 <- MOIST2 |> mutate(mdate = as.factor(mdate), 
+                           levels(c(2026-10-08, 2026-10-15))) #assigning levels 
+
+#block and treatment: character --> factor
+MOIST3 <- MOIST3 |> mutate(across
+                           (c(mblock, mtreatment),
+                             as.factor))
+
+
+#VWC's: character --> numeric 
+MOIST3 <- MOIST3 |> mutate(across
+                           (c(VWC1_perc, VWC2_perc, VWC3_perc), #select columns
+                             as.numeric)) #converting 2 numerical 
+
+glimpse(MOIST3) #checking work 
+
+#add column with VWC average per row: 
+MOIST4 <- MOIST3 |> rowwise() |> 
+  mutate(vwc_mean = mean(
+  c(VWC1_perc, VWC2_perc, VWC3_perc), na.rm = TRUE
+)) |> ungroup() 
+
+```
+
+soil moisture summary table?
+
+### Sapling Height Data Cleaning: 
+
+```{r, HEIGHT CLEANING}
+
+#dropping uneeded rows: 
+TALL1 <- Height_Data_Raw |>  select(Date, Block, Tag_Num, Treatment, Sapling_AB_etc, Seedling_Ht_cm, Dead_Alive, Notes)
+
+#rename columns: 
+TALL2 <- TALL1 |> rename( tdate = Date, 
+                          tblock = Block, 
+                          ttreatment = Treatment, 
+                          ttag = Tag_Num, 
+                          tsap_AB = Sapling_AB_etc, 
+                          tht = Seedling_Ht_cm, 
+                          dead_alive = Dead_Alive, 
+                          notes = Notes
+)
+
+#reclassifying data types: 
+
+#block and treatment: character --> factor
+TALL3 <- TALL2 |> mutate(across
+                         (c(tblock, ttreatment, dead_alive),
+                           as.factor))
+
+#date: charcter --> factor with levels 
+TALL3 <- TALL3 |> mutate(tdate = as.factor(tdate), 
+                           levels(c(2026-10-08, 2026-10-15))) #assigning levels 
+
+glimpse(TALL3) #double checking work 
+```
+
+seedling height summary table?
+
+```{r}
+#sinister block where i'll combine them all into one evil file
+```
+
+```{r}
+#block to remove all the intermediate data objects, don't clutter my environment bitch 
+```
+
+## ANOVA: 
+
+```{r}
+#tests of assumptions 
+```
+
+```{r}
+#actual test 
+```
+
+```{r}
+#post test 
+```
+
+```{r}
+#beautiful beautiful figure. maybe one of the best figures ever made 
+```
+
+interpretation of results?
+
+## Regression: 
+
+```{r}
+#assumption test
+```
+
+```{r}
+#actual test 
+```
+
+```{r}
+#post test??? 
+```
+
+```{r}
+#another beautiful figure
+```
+
+interpretation of results? connecting thoughts?

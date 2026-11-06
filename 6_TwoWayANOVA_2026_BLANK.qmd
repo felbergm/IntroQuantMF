@@ -61,11 +61,11 @@ This dataset is already in tidy format. Lucky us!
 
 ### Step 2: Assess what kind of variables we're dealing with.
 
-- height: quantitative  - response
+- height: quantitative - response
 
-- plant: categorical  - predictor, factor with multiple levels
+- plant: categorical - predictor, factor with multiple levels
 
-- water: categorical  - predictor, factor with multiple levels
+- water: categorical - predictor, factor with multiple levels
 
 Predictors: plant, water
 
