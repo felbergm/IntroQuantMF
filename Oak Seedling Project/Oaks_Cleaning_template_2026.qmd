@@ -236,7 +236,7 @@ messing with datatypes, I reclassify the date columns to be Date data but then c
 #testing converting dates in LICOR to a date time datatype 
 
 licor_date <- LICOR_datatype |> mutate(date = as.factor(date), levels(c(2026-10-08, 2026-10-15)))
-glimpse(LICOR_date)
+
 
 
 #changing spad dates 

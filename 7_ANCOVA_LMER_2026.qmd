@@ -277,6 +277,8 @@ cAIC(AllSiteModel_LocnoInt_rSite)$caic)
 
 summary(AllSiteModel_ANCOVA_noInt)
 summary(AllSiteModel_LocnoInt_rSite)
+
+#its typical to report effect size of each variable in the model you choose, this is underneath the Estimate collumn in the summary table 
 ```
 
 Seems pretty conclusively like neither of our possible formulations (site as a blocking factor without interactions, vs as a random effect) have a significant effect of location. Does this actually make sense with our data?
@@ -286,6 +288,8 @@ ggplot(All_Terr_Data) +
   aes(x = log(mass_g), log(area_mm2), color = site, shape = location) +
   geom_point() +
   geom_smooth(method = "lm", se = FALSE)
+
+
 ```
 
 It looks like TC is the only one where there might be a difference - it likely was due to chance, considering that relationship wasn't replicated elsewhere! Good thing we looked at multiple sites before we came to any conclusions.
@@ -295,9 +299,13 @@ It looks like TC is the only one where there might be a difference - it likely w
 There are a few differences in reporting LMER - you don't have to discuss the random effects really at all. When reporting the fixed effects, its more customary to talk about the effect sizes and their confidence than the P-values.
 
 ```{r}
-summary(AllSiteModel_LocnoInt_rSite)
-library(sjPlot)
-plot_model(AllSiteModel_LocnoInt_rSite) + geom_hline(aes(yintercept = 0), linetype = "dotted")
+summary(AllSiteModel_LocInt_randSite)
+library(sjPlot)  #new plot package :) 
+plot_model(AllSiteModel_LocInt_randSite) + geom_hline(aes(yintercept = 0), linetype = "dotted")
+
+
+#we are very very confident that mass has a significant effect on area
+#we are not very confident in location or mass x location having an effect on area, since the error bars overlap with 0 
 ```
 
 If the fixed effect estimate is greater than 0, and the standard error bars don't overlap zero, you can be confident that there is a positive relationship for that variable. (and vice versa for a negative relationship).
