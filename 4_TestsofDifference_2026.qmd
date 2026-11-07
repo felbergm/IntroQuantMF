@@ -414,6 +414,7 @@ The null hypothesis of the Bartlett Test is that the variance is equal among all
 # Bartlett Test of Homogeneity of Variances
 bartlett.test(Height~Site, data=sward2)
 
+
 # HOV is separate from testing for normality! 
 bartlett.test(vals~dist, data = HOVbad)
 ```

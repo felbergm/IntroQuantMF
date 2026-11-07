@@ -165,7 +165,7 @@ Different ways of formulating the model or computing the outputs alters the way 
 Since the interaction in this model was not significant, and we do not have equal sampling between our two locations, we should report the results of the Type II Sum of Squares.
 
 ```{r}
-car::
+
 ```
 
 ## Comparing models using AIC

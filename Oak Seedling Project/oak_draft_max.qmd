@@ -5,7 +5,7 @@ format: html
 editor: visual
 ---
 
-# big yummy title 
+# big yummy title
 
 overview of analysis? hypothesis / questions?
 
@@ -15,9 +15,11 @@ overview of analysis? hypothesis / questions?
 #load in packages here, just try all of them lwk
 library(tidyverse)
 library(readxl)
+library(rstatix)
+library(tidyr)
 ```
 
-## reading data 
+## reading data
 
 ```{r}
 #load in data files here 
@@ -90,7 +92,7 @@ overview on basic data cleaning steps
 #clean seedling height data- reassign treatment type to be factor 
 ```
 
-### LICOR Data Cleaning: 
+### LICOR Data Cleaning:
 
 ```{r, LICOR CLEANING}
 
@@ -131,12 +133,15 @@ LICOR4 <- LICOR3 |> filter(block != "4.0")
 ```
 
 ```{r}
-#terrible and sinister code block that will fill in LICOR treatment values 
+#terrible and sinister code block that will fill in LICOR treatment values
+
+LICOR5 <- LICOR4 |> fill(treatment, .direction = "down" )
+
 ```
 
 LICOR summary table will go here i guess- make a nice one so it also includes sample sizes
 
-### Soil Moisture Data Cleaning: 
+### Soil Moisture Data Cleaning:
 
 ```{r, SOILMOIST CLEANING}
 
@@ -178,7 +183,7 @@ MOIST4 <- MOIST3 |> rowwise() |>
 
 soil moisture summary table?
 
-### Sapling Height Data Cleaning: 
+### Sapling Height Data Cleaning:
 
 ```{r, HEIGHT CLEANING}
 
@@ -213,34 +218,91 @@ glimpse(TALL3) #double checking work
 seedling height summary table?
 
 ```{r}
-#sinister block where i'll combine them all into one evil file
+#removing all intermediate data objects to unclutter the enviornment 
+
+rm(LICOR1, LICOR2, LICOR3, LICOR4, MOIST1, MOIST2, MOIST3, TALL1, TALL2)
 ```
 
 ```{r}
-#block to remove all the intermediate data objects, don't clutter my environment bitch 
+#dividing data by wet and dry: 
+
+#LICOR: 
+DRYLICOR <- LICOR5 |> filter(
+  block == "001" | block =="002"| block =="003" | block =="004")
+
+WETLICOR <- LICOR5 |> filter(
+  block =="005" | block =="006" | block =="007" | block =="008"
+)
+
+#HEIGHT: 
+DRYTALL <- TALL3 |> filter(
+  tblock == "001" | tblock =="002"| tblock =="003" | tblock =="004")
+
+WETTALL <- TALL3 |> filter(
+  tblock =="005" | tblock =="006" | tblock =="007" | tblock =="008")
+
+#SOIL MOISTURE: 
+DRYMOIST <- MOIST4 |>  filter(
+  mblock == "001" | mblock =="002"| mblock =="003" | mblock =="004")
+
+WETMOIST <- MOIST4 |> filter(
+  mblock =="005" | mblock =="006" | mblock =="007" | mblock =="008")
 ```
 
-## ANOVA: 
+## ANOVA:
 
 ```{r}
-#tests of assumptions 
+#checking normality: 
+WETLICOR |> ggplot() + aes(x = treatment, y = transpir) + 
+  geom_boxplot()
+
+hist(WETLICOR$transpir) #i think its normal,,, 
+
+
+#setting up model: 
+WET_L_MODEL <- lm(transpir ~ treatment + block, data = WETLICOR)
+summary(WET_L_MODEL)
+
+#looking at residuals and qqs: 
+plot(WET_L_MODEL, which = c(1,2))
+
+#homogeniety of variance: 
+bartlett.test(transpir ~ treatment , data = LICORWET) #not homogeneous
+WETLICOR |> rstatix::levene_test(transpir ~ treatment)#again, not homogeneous
+
 ```
 
 ```{r}
-#actual test 
+#ANOVA test
+anova(WET_L_MODEL)
+#very significant differences between treatment types, also differences in block?? why is block here
 ```
 
 ```{r}
 #post test 
+tukey_test <- TukeyHSD( aov(transpir ~ treatment + block, data = WETLICOR) )
+
+#significant differences between: 
+      #OS-AC
+      #OS-DT
+      #OS-NR <- greatest 
+#super similar sets: 
+      #DT-AC
+      #NR-AC
+      #NR-DT <- most similar
+
 ```
 
 ```{r}
-#beautiful beautiful figure. maybe one of the best figures ever made 
+#making a good table to show it all: 
+
+
+
 ```
 
 interpretation of results?
 
-## Regression: 
+## Regression:
 
 ```{r}
 #assumption test
