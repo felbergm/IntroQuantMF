@@ -173,6 +173,8 @@ MOIST3 <- MOIST3 |> mutate(across
 
 glimpse(MOIST3) #checking work 
 
+####TRY GROUPING BY BLOCK AND TREATMENT, THEN GETTING THE AVERAGE OF ALL OF THOSE!!! THEN WE CAN MAYBE MATCH THINGS BETTER TO LICOR?? 
+
 #add column with VWC average per row: 
 MOIST4 <- MOIST3 |> rowwise() |> 
   mutate(vwc_mean = mean(
