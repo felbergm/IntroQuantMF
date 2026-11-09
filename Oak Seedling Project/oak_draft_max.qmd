@@ -9,6 +9,22 @@ editor: visual
 
 overview of analysis? hypothesis / questions?
 
+## things to clean up before final draft:
+
+- remove soil moisture data all togehter because i didnt use it
+
+- change names fo rdataframes of all the joined table
+
+- double check the order of everything- very bad habit of jumping back and forth between chunks while working something out so it might not run start to end cleanly :/
+
+- do i need to divide data by wet/dry???? is that chunk even necessary??
+
+- move seedling height mean to the seedling height cleaning section instead of the test section
+
+- reselect columns on big join dataframe to clean things up. very ugly bloated dataframe rn
+
+- remove objects / data / values that i dont need!!! get rid of all that intermediary crap
+
 ## loading in packages
 
 ```{r}
@@ -82,16 +98,6 @@ LICOR_Data_Raw <- full_join(LICOR_Data_Raw, ALL_Licor)
 
 overview on basic data cleaning steps
 
-```{r}
-#clean licor, fill in licor data, reassign treatment type to be a factor 
-    #get rid of 4.0 block 
-    #fill in missing data parts 
-    #
-#clean soil moisture, reassing treatment type to be factor 
-
-#clean seedling height data- reassign treatment type to be factor 
-```
-
 ### LICOR Data Cleaning:
 
 ```{r, LICOR CLEANING}
@@ -133,15 +139,58 @@ LICOR4 <- LICOR3 |> filter(block != "4.0")
 ```
 
 ```{r}
-#terrible and sinister code block that will fill in LICOR treatment values
-
+#filling in LICOR treatment values: 
 LICOR5 <- LICOR4 |> fill(treatment, .direction = "down" )
 
 ```
 
 LICOR summary table will go here i guess- make a nice one so it also includes sample sizes
 
-### Soil Moisture Data Cleaning:
+### SPAD cleaning instead:
+
+```{r}
+#selecting only columns i want: 
+SPAD1 <- SPAD_Data_Raw |> select(Date, Block, Treatment, Tag_Num, Leaf1, Leaf2, Leaf3, Leaf4, Leaf5, Leaf6) 
+
+#rename columns: 
+SPAD2 <- SPAD1 |> rename( sdate = Date, 
+                            sblock = Block, 
+                            streatment = Treatment,
+                          stag = Tag_Num) 
+
+#reassign data types:
+
+#block and treatment: character --> factor
+SPAD3 <- SPAD2 |> mutate(across
+                           (c(sblock, streatment),
+                             as.factor))
+
+#date: charcter --> factor with levels 
+SPAD3 <- SPAD3 |> mutate(sdate = as.factor(sdate), 
+                           levels(c(2026-10-08, 2026-10-15))) #assigning levels 
+
+
+#creating mean across leaves rowwise: 
+SPAD4 <- SPAD3 |> rowwise() |> mutate(leaf_mean = mean(
+  c(Leaf1, Leaf2, Leaf3, Leaf4, Leaf5, Leaf6), na.rm = TRUE
+)) |> ungroup() 
+
+
+```
+
+```{r}
+#trying to remove tag letters to make it more compatible with LICOR: 
+#removing rows full of NA 
+SPAD5 <- SPAD4[1:103, ]
+
+#removing A/B/C tags, to help join to LICOR / others 
+SPAD6 <- separate(SPAD5, col = stag, into = c("stag", "bs"), sep = 3 )
+
+#selecting only columns I want again: 
+SPAD6 <- SPAD6 |> select (sblock, stag, streatment, Leaf1, Leaf2, Leaf3, Leaf4, Leaf5, Leaf6, leaf_mean)
+```
+
+### NOT GOING TO USE: Soil Moisture Data Cleaning:
 
 ```{r, SOILMOIST CLEANING}
 
@@ -173,14 +222,17 @@ MOIST3 <- MOIST3 |> mutate(across
 
 glimpse(MOIST3) #checking work 
 
-####TRY GROUPING BY BLOCK AND TREATMENT, THEN GETTING THE AVERAGE OF ALL OF THOSE!!! THEN WE CAN MAYBE MATCH THINGS BETTER TO LICOR?? 
 
-#add column with VWC average per row: 
-MOIST4 <- MOIST3 |> rowwise() |> 
+# add column with VWC average per row:
+MOIST4 <- MOIST3 |> rowwise() |>
   mutate(vwc_mean = mean(
   c(VWC1_perc, VWC2_perc, VWC3_perc), na.rm = TRUE
-)) |> ungroup() 
+)) |> ungroup()
 
+
+#averaging one more time. most blocks and treatments only have 1 observation but this fixes the few that have 2: 
+MOIST5 <- MOIST4 |> group_by(mblock, mtreatment) |> 
+  mutate(mean_mean = mean(vwc_mean, na.rm=TRUE))
 ```
 
 soil moisture summary table?
@@ -219,13 +271,18 @@ glimpse(TALL3) #double checking work
 
 seedling height summary table?
 
-```{r}
+#### Removing unnecessary objects
+
+```{r, REMOVING}
 #removing all intermediate data objects to unclutter the enviornment 
 
-rm(LICOR1, LICOR2, LICOR3, LICOR4, MOIST1, MOIST2, MOIST3, TALL1, TALL2)
+rm(LICOR1, LICOR2, LICOR3, LICOR4, MOIST1, MOIST2, MOIST3, MOIST4, TALL1, TALL2)
+
 ```
 
-```{r}
+#### Dividing data wet/dry:
+
+```{r, WET/DRY}
 #dividing data by wet and dry: 
 
 #LICOR: 
@@ -244,16 +301,45 @@ WETTALL <- TALL3 |> filter(
   tblock =="005" | tblock =="006" | tblock =="007" | tblock =="008")
 
 #SOIL MOISTURE: 
-DRYMOIST <- MOIST4 |>  filter(
+DRYMOIST <- MOIST5 |>  filter(
   mblock == "001" | mblock =="002"| mblock =="003" | mblock =="004")
 
-WETMOIST <- MOIST4 |> filter(
+WETMOIST <- MOIST5 |> filter(
   mblock =="005" | mblock =="006" | mblock =="007" | mblock =="008")
+
+```
+
+### test area for joining:
+
+```{r}
+
+#creating seed height average, grouping by block, tag, and treatment: 
+TESTTALL <- WETTALL |> group_by(ttag, tsap_AB) |> mutate(
+  ht_mean = mean(tht))
+
+#replacing OS in height to match OS in LICOR: 
+TESTTALL$ttreatment[TESTTALL$ttreatment=="OA"]<- "OS" #why the hell is it OA in this file only. who did this 
+
+#JOINING licor and height data
+TEST_HTLICOR <- full_join(WETLICOR, TESTTALL,
+                          by = c('block'='tblock', 
+                                 'tagnum' = 'ttag',
+                                 'treatment' = 'ttreatment')) 
+
+#selecting wnated columns again: 
+CLEANJOIN <- TEST_HTLICOR |> select(block, tagnum, treatment, transpir, ht_mean)
+
+#joining moisture to LICOR + height: 
+CLEANJOIN2 <- full_join(TEST_HTLICOR, SPAD6, by = 
+                          c('block' = 'sblock', 
+                            'tagnum' = 'stag', 
+                            'treatment' = 'streatment'))
+
 ```
 
 ## ANOVA:
 
-```{r}
+```{r, ASSUMPTIONS + MODEL}
 #checking normality: 
 WETLICOR |> ggplot() + aes(x = treatment, y = transpir) + 
   geom_boxplot()
@@ -274,13 +360,13 @@ WETLICOR |> rstatix::levene_test(transpir ~ treatment)#again, not homogeneous
 
 ```
 
-```{r}
+```{r, ANOVA}
 #ANOVA test
 anova(WET_L_MODEL)
 #very significant differences between treatment types, also differences in block?? why is block here
 ```
 
-```{r}
+```{r, TUKEY}
 #post test 
 tukey_test <- TukeyHSD( aov(transpir ~ treatment + block, data = WETLICOR) )
 
@@ -295,7 +381,7 @@ tukey_test <- TukeyHSD( aov(transpir ~ treatment + block, data = WETLICOR) )
 
 ```
 
-```{r}
+```{r, FINAL TABLE}
 #making a good table to show it all: 
 
 
@@ -305,6 +391,20 @@ tukey_test <- TukeyHSD( aov(transpir ~ treatment + block, data = WETLICOR) )
 interpretation of results?
 
 ## Regression:
+
+```{r}
+#looking at point plots between transpiraiton and seedling height and average spad... looking for anything cool: 
+
+#height x transpiration
+CLEANJOIN2 |> ggplot() + aes(x = tht, y = transpir) + 
+  geom_point() + geom_smooth()
+
+#SPAD x transpiration 
+CLEANJOIN2 |> ggplot() + aes(x = leaf_mean, y = transpir) + 
+  geom_point() + geom_smooth()
+
+
+```
 
 ```{r}
 #assumption test
