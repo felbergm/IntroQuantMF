@@ -5,9 +5,9 @@ format: html
 editor: visual
 ---
 
-# big yummy title will go right here
+# Oak Seedling Statistical Analysis
 
-overview of analysis and questions are going to go right here!
+**overview**: transpiration values differ greatly between wet/dry observations overall, but treatment starts to significantly impact transpiration values ONLY under wet conditions. ANOVA test ot make sure there is significant differences between treatment types, then Tukey to see which treatments are the most/least similar and what direction differences are in. then regression on seedling height and SPAD values to see if those are related to transpiration in some way or explain transpiration better than treatment type.
 
 ## things to clean up before final draft!:
 
@@ -347,7 +347,7 @@ tukey_test
 
 interpretation of results?
 
-## Regression:
+##  Regression:
 
 now trying to see if other variables could explain this transpiration stuff better than treatment
 
@@ -399,7 +399,7 @@ CLEANJOIN2 |> select(transpir,tht, leaf_mean) |>
   cor(use = 'complete.obs') |>  #making it ignore NAs 
   round(3)
 #almost everything is negatively correlated.... 
-#also none of these are really strongly correlated
+#also none of these are really strongly correlated either
 
 ```
 
