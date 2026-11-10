@@ -5,15 +5,19 @@ format: html
 editor: visual
 ---
 
-# big yummy title
+# big yummy title will go right here
 
-overview of analysis? hypothesis / questions?
+overview of analysis..
 
 ## things to clean up before final draft:
 
-- remove soil moisture data all togehter because i didnt use it
+- remove soil moisture data all togehter because i didnt use
 
-- change names fo rdataframes of all the joined table
+- add ANOVA comparing wet/dry, i looked at the data just with a graph but i need the significance and the values
+
+- ANOVA + summary tables
+
+- change names for dataframes of all the joined table
 
 - double check the order of everything- very bad habit of jumping back and forth between chunks while working something out so it might not run start to end cleanly :/
 
@@ -144,7 +148,7 @@ LICOR5 <- LICOR4 |> fill(treatment, .direction = "down" )
 
 ```
 
-LICOR summary table will go here i guess- make a nice one so it also includes sample sizes
+LICOR summary table will go here i guess- make a nice one that also includes sample sizes
 
 ### SPAD cleaning instead:
 
@@ -190,53 +194,6 @@ SPAD6 <- separate(SPAD5, col = stag, into = c("stag", "bs"), sep = 3 )
 SPAD6 <- SPAD6 |> select (sblock, stag, streatment, Leaf1, Leaf2, Leaf3, Leaf4, Leaf5, Leaf6, leaf_mean)
 ```
 
-### NOT GOING TO USE: Soil Moisture Data Cleaning:
-
-```{r, SOILMOIST CLEANING}
-
-#removing unecessary columns: 
-MOIST1 <- Moist_Data_Raw |>  select(Date, Block, Treatment, VWC1_perc, VWC2_perc, VWC3_perc)
-
-#rename columns: 
-MOIST2 <- MOIST1 |> rename( mdate = Date, 
-                            mblock = Block, 
-                            mtreatment = Treatment, 
-)
-
-#reassign data type: 
-
-#date: charcter --> factor with levels 
-MOIST3 <- MOIST2 |> mutate(mdate = as.factor(mdate), 
-                           levels(c(2026-10-08, 2026-10-15))) #assigning levels 
-
-#block and treatment: character --> factor
-MOIST3 <- MOIST3 |> mutate(across
-                           (c(mblock, mtreatment),
-                             as.factor))
-
-
-#VWC's: character --> numeric 
-MOIST3 <- MOIST3 |> mutate(across
-                           (c(VWC1_perc, VWC2_perc, VWC3_perc), #select columns
-                             as.numeric)) #converting 2 numerical 
-
-glimpse(MOIST3) #checking work 
-
-
-# add column with VWC average per row:
-MOIST4 <- MOIST3 |> rowwise() |>
-  mutate(vwc_mean = mean(
-  c(VWC1_perc, VWC2_perc, VWC3_perc), na.rm = TRUE
-)) |> ungroup()
-
-
-#averaging one more time. most blocks and treatments only have 1 observation but this fixes the few that have 2: 
-MOIST5 <- MOIST4 |> group_by(mblock, mtreatment) |> 
-  mutate(mean_mean = mean(vwc_mean, na.rm=TRUE))
-```
-
-soil moisture summary table?
-
 ### Sapling Height Data Cleaning:
 
 ```{r, HEIGHT CLEANING}
@@ -276,11 +233,11 @@ seedling height summary table?
 ```{r, REMOVING}
 #removing all intermediate data objects to unclutter the enviornment 
 
-rm(LICOR1, LICOR2, LICOR3, LICOR4, MOIST1, MOIST2, MOIST3, MOIST4, TALL1, TALL2)
+rm(LICOR1, LICOR2, LICOR3, LICOR4, TALL1, TALL2)
 
 ```
 
-#### Dividing data wet/dry:
+#### Dividing data wet/dry- might delete? do i need to do this?? 
 
 ```{r, WET/DRY}
 #dividing data by wet and dry: 
@@ -300,12 +257,6 @@ DRYTALL <- TALL3 |> filter(
 WETTALL <- TALL3 |> filter(
   tblock =="005" | tblock =="006" | tblock =="007" | tblock =="008")
 
-#SOIL MOISTURE: 
-DRYMOIST <- MOIST5 |>  filter(
-  mblock == "001" | mblock =="002"| mblock =="003" | mblock =="004")
-
-WETMOIST <- MOIST5 |> filter(
-  mblock =="005" | mblock =="006" | mblock =="007" | mblock =="008")
 
 ```
 
@@ -346,6 +297,8 @@ WETLICOR |> ggplot() + aes(x = treatment, y = transpir) +
 
 hist(WETLICOR$transpir) #i think its normal,,, 
 
+#getting rid of the ?? treatment so its not all up in my tukey test: 
+WETLICOR <- WETLICOR |> filter(treatment != "??")
 
 #setting up model: 
 WET_L_MODEL <- lm(transpir ~ treatment + block, data = WETLICOR)
@@ -361,30 +314,36 @@ WETLICOR |> rstatix::levene_test(transpir ~ treatment)#again, not homogeneous
 ```
 
 ```{r, ANOVA}
+
+summary(WET_L_MODEL) #yummy r-squared value, 27% 
+
 #ANOVA test
 anova(WET_L_MODEL)
-#very significant differences between treatment types, also differences in block?? why is block here
+#very significant differences between treatment types!!, also differences in block?? why is block here
+
+
 ```
 
 ```{r, TUKEY}
 #post test 
 tukey_test <- TukeyHSD( aov(transpir ~ treatment + block, data = WETLICOR) )
 
+tukey_test 
+
 #significant differences between: 
       #OS-AC
       #OS-DT
-      #OS-NR <- greatest 
+      #OS-NR <- greatest difference!!! 
+      #OS overall has crazy differences, all negative too... 
 #super similar sets: 
       #DT-AC
       #NR-AC
-      #NR-DT <- most similar
+      #NR-DT <- most similar to each other!! interesting!!
 
 ```
 
 ```{r, FINAL TABLE}
-#making a good table to show it all: 
-
-
+#making a good table to show it all of: 
 
 ```
 
@@ -392,8 +351,10 @@ interpretation of results?
 
 ## Regression:
 
+now trying to see if other variables could explain this transpiration stuff better than treatment
+
 ```{r}
-#looking at point plots between transpiraiton and seedling height and average spad... looking for anything cool: 
+#looking at point plots between transpiraiton and seedling height and average spad... looking for anything cool:
 
 #height x transpiration
 CLEANJOIN2 |> ggplot() + aes(x = tht, y = transpir) + 
@@ -403,23 +364,72 @@ CLEANJOIN2 |> ggplot() + aes(x = tht, y = transpir) +
 CLEANJOIN2 |> ggplot() + aes(x = leaf_mean, y = transpir) + 
   geom_point() + geom_smooth()
 
+#conductance x transpiration 
+CLEANJOIN2 |> ggplot() + aes(x = conduct, y = transpir) + 
+  geom_point() + geom_smooth()  #what the hell is that 
+
+#might need to revisit conductance and remove the crazy outliers, but not right now i don't want to
 
 ```
 
 ```{r}
 #assumption test
+#looking for normality 
+hist(CLEANJOIN2$tht)       #ehhhhhh 
+hist(CLEANJOIN2$leaf_mean) #pretty good
+hist(CLEANJOIN2$conduct)   #pretty bad
+
+#setting up basic linear models to look at variance: 
+tht_transpir.lm <- lm(transpir ~ tht, data = CLEANJOIN2)
+leaf_transpir.lm <- lm(transpir ~ leaf_mean, data = CLEANJOIN2)
+conduct_transpir.lm <- lm(transpir ~ conduct, data = CLEANJOIN2)
+
+plot(tht_transpir.lm, which = 1)  #could be better,,, 
+plot(leaf_transpir.lm, which = 1) #pretty noice 
+plot(conduct_transpir.lm, which = 1) #actually atrocious 
+
+
+log_conduct_transpir.lm <- lm(transpir ~ log(conduct), data = CLEANJOIN2)
+plot(log_conduct_transpir.lm, which = 1) #still not good!! #dropping conductance
+
 ```
 
 ```{r}
-#actual test 
+#looking at correlation coeffs: 
+
+CLEANJOIN2 |> select(transpir,tht, leaf_mean) |> 
+  cor(use = 'complete.obs') |>  #making it ignore NAs 
+  round(3)
+#almost everything is negatively correlated.... 
+#also none of these are really strongly correlated
+
 ```
 
 ```{r}
-#post test??? 
+#setting up models: 
+
+#straightforward ones: 
+
+mod1 <- lm(transpir ~ tht, data = CLEANJOIN2)
+mod2 <- lm(transpir ~ leaf_mean, data = CLEANJOIN2) 
+
+#interactions: 
+mod3 <- lm(transpir ~ tht * leaf_mean, data = CLEANJOIN2)
+mod4 <- lm(transpir ~ tht + leaf_mean, data = CLEANJOIN2)
+mod5 <- lm(transpir ~ leaf_mean + tht, data = CLEANJOIN2)
+
+summary(mod1)
+summary(mod2)
+summary(mod3)
+summary(mod4)
+summary(mod5)
+
+#tht has the best p values in both models, but pretty mid R squared values! 
+
 ```
 
 ```{r}
-#another beautiful figure
+#some sort of summary table of these models is going to go here,,, 
 ```
 
 interpretation of results? connecting thoughts?
