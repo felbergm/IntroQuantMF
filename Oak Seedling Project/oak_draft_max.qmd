@@ -7,11 +7,9 @@ editor: visual
 
 # big yummy title will go right here
 
-overview of analysis..
+overview of analysis and questions are going to go right here!
 
-## things to clean up before final draft:
-
-- remove soil moisture data all togehter because i didnt use
+## things to clean up before final draft!:
 
 - add ANOVA comparing wet/dry, i looked at the data just with a graph but i need the significance and the values
 
@@ -237,7 +235,7 @@ rm(LICOR1, LICOR2, LICOR3, LICOR4, TALL1, TALL2)
 
 ```
 
-#### Dividing data wet/dry- might delete? do i need to do this?? 
+#### Dividing data wet/dry- might delete? do i need to do this??
 
 ```{r, WET/DRY}
 #dividing data by wet and dry: 
@@ -338,7 +336,7 @@ tukey_test
 #super similar sets: 
       #DT-AC
       #NR-AC
-      #NR-DT <- most similar to each other!! interesting!!
+      #NR-DT <- most similar to each other??  interesting!!
 
 ```
 
