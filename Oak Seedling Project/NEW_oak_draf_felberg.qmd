@@ -1,0 +1,165 @@
+---
+title: "NEW_oak_draf_felberg"
+author: "Max Felberg"
+format: html
+editor: visual
+---
+
+to-do list:
+
+- make boxplot of alive sapling heights to compare normality for anova test
+
+- check for outliers in sapling heights too !!!
+
+- do anova test on sapling heights
+
+loading in packages
+
+```{r}
+#loading in packages
+library(tidyverse)
+library(readxl)
+library(rstatix)
+library(tidyr)
+```
+
+reading data
+
+```{r}
+#reading excel files: 
+Height_Data_Raw <- 
+  read_excel("Oak Data Entry MCRS Field Trip.xlsx", 
+             sheet = "Seedling Heights")
+
+Moist_Data_Raw <- 
+  read_excel("Oak Data Entry MCRS Field Trip.xlsx", 
+             sheet = "Soil Moisture")
+
+SPAD_Data_Raw <- 
+  read_excel("Oak Data Entry MCRS Field Trip.xlsx", 
+             sheet = "SPAD", 
+             na = "NA")  #tells it to read NA as missing data 
+```
+
+cleaning up data
+
+seedling height cleaning
+
+```{r, HEIGHT CLEANING}
+
+#dropping uneeded rows: 
+TALL1 <- Height_Data_Raw |>  select(Date, Block, Tag_Num, Treatment, Sapling_AB_etc, Seedling_Ht_cm, Dead_Alive, Notes)
+
+#rename columns: 
+TALL2 <- TALL1 |> rename( tdate = Date, 
+                          tblock = Block, 
+                          ttreatment = Treatment, 
+                          ttag = Tag_Num, 
+                          tsap_AB = Sapling_AB_etc, 
+                          tht = Seedling_Ht_cm, 
+                          dead_alive = Dead_Alive, 
+                          notes = Notes
+)
+
+#reclassifying data types: 
+
+#block, treatment, dead/alive: character --> factor
+TALL3 <- TALL2 |> mutate(across
+                         (c(tblock, ttreatment, dead_alive),
+                           as.factor))
+
+#date: charcter --> factor with levels 
+TALL3 <- TALL3 |> mutate(tdate = as.factor(tdate), 
+                         levels(c(2026-10-08, 2026-10-15))) #assigning levels 
+
+glimpse(TALL3) #double checking work 
+
+#replacing OA in height: 
+TALL3$ttreatment[TALL3$ttreatment=="OA"]<- "OS" #why the hell is it OA in this file only. who did this 
+
+TALL4 <- TALL3 |> filter(ttreatment != "SA")  #removing rows with SA treatment, because what is that
+TALL4 <- TALL4 |> drop_na(dead_alive) #removing the one NA row since it messes up my other graphs 
+```
+
+soil moisture cleaning
+
+```{r, SOILMOIST CLEANING}
+
+#removing unecessary columns: 
+MOIST1 <- Moist_Data_Raw |>  select(Date, Block, Treatment, VWC1_perc, VWC2_perc, VWC3_perc)
+
+#rename columns: 
+MOIST2 <- MOIST1 |> rename( mdate = Date, 
+                            mblock = Block, 
+                            mtreatment = Treatment, 
+)
+
+#reassign data type: 
+
+#date: charcter --> factor with levels 
+MOIST3 <- MOIST2 |> mutate(mdate = as.factor(mdate), 
+                           levels(c(2026-10-08, 2026-10-15))) #assigning levels 
+
+#block and treatment: character --> factor
+MOIST3 <- MOIST3 |> mutate(across
+                           (c(mblock, mtreatment),
+                             as.factor))
+
+
+#VWC's: character --> numeric 
+MOIST3 <- MOIST3 |> mutate(across
+                           (c(VWC1_perc, VWC2_perc, VWC3_perc), #select columns
+                             as.numeric)) #converting 2 numerical 
+
+glimpse(MOIST3) #checking work 
+
+####TRY GROUPING BY BLOCK AND TREATMENT, THEN GETTING THE AVERAGE OF ALL OF THOSE!!! THEN WE CAN MAYBE MATCH THINGS BETTER TO LICOR?? 
+
+#add column with VWC average per row: 
+MOIST4 <- MOIST3 |> rowwise() |> 
+  mutate(vwc_mean = mean(
+    c(VWC1_perc, VWC2_perc, VWC3_perc), na.rm = TRUE
+  )) |> ungroup() 
+
+
+```
+
+```{r, removing unecessary objects}
+
+rm(Height_Data_Raw, Moist_Data_Raw, MOIST1, MOIST2, MOIST3, SPAD_Data_Raw, TALL1, TALL2)
+```
+
+height data time:
+
+- get counts of alive/dead per treatment
+
+- anova between heights - height \~ treatment + block + date (?)
+
+- tukey test to see which block is best
+
+```{r}
+
+TALL4 |> group_by(ttreatment) |> count(dead_alive) |>  ggplot() + 
+  aes(x = ttreatment, y = n, fill = dead_alive) + 
+  geom_col(position = "fill") 
+
+#NR has highest number of alive seedlings, followed by AC, then DT
+#OS has highest number of dead, followed by DT 
+#NR with lowest amount of dead 
+```
+
+```{r}
+#setting up ANOVA model and testing assumptions
+
+TALL5 <- TALL4 |> filter(tht != 0.0)  
+
+height_m <- lm(log(tht) ~ ttreatment + tblock, data = TALL5)
+
+plot(height_m)
+
+bartlett.test(log(tht)~ ttreatment, data = TALL5)
+```
+
+```{r}
+
+```

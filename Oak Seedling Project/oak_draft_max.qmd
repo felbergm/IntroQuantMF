@@ -347,7 +347,7 @@ tukey_test
 
 interpretation of results?
 
-##  Regression:
+## Regression:
 
 now trying to see if other variables could explain this transpiration stuff better than treatment
 
