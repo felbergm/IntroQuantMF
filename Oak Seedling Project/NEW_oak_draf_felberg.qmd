@@ -21,6 +21,7 @@ library(tidyverse)
 library(readxl)
 library(rstatix)
 library(tidyr)
+library(ggplot2)
 ```
 
 reading data
@@ -81,6 +82,18 @@ TALL4 <- TALL3 |> filter(ttreatment != "SA")  #removing rows with SA treatment, 
 TALL4 <- TALL4 |> drop_na(dead_alive) #removing the one NA row since it messes up my other graphs 
 ```
 
+```{r}
+#looking for height outliers 
+
+boxplot(TALL4$tht, plot=FALSE)$out  #identifying height outlier values 
+
+outliers <- boxplot(TALL4$tht, plot=FALSE)$out  #assigning these values to a vector
+
+TALL5<- TALL4[-which(TALL4$tht %in% outliers),] #removing the outliers, reassigning data frame to TALL 5
+
+
+```
+
 soil moisture cleaning
 
 ```{r, SOILMOIST CLEANING}
@@ -113,14 +126,14 @@ MOIST3 <- MOIST3 |> mutate(across
 
 glimpse(MOIST3) #checking work 
 
-####TRY GROUPING BY BLOCK AND TREATMENT, THEN GETTING THE AVERAGE OF ALL OF THOSE!!! THEN WE CAN MAYBE MATCH THINGS BETTER TO LICOR?? 
-
 #add column with VWC average per row: 
 MOIST4 <- MOIST3 |> rowwise() |> 
   mutate(vwc_mean = mean(
     c(VWC1_perc, VWC2_perc, VWC3_perc), na.rm = TRUE
   )) |> ungroup() 
 
+#dropping extra NA rows 
+MOIST5 <- MOIST4 |> drop_na(VWC1_perc)
 
 ```
 
@@ -139,7 +152,7 @@ height data time:
 
 ```{r}
 
-TALL4 |> group_by(ttreatment) |> count(dead_alive) |>  ggplot() + 
+TALL5 |> group_by(ttreatment) |> count(dead_alive) |>  ggplot() + 
   aes(x = ttreatment, y = n, fill = dead_alive) + 
   geom_col(position = "fill") 
 
@@ -148,18 +161,96 @@ TALL4 |> group_by(ttreatment) |> count(dead_alive) |>  ggplot() +
 #NR with lowest amount of dead 
 ```
 
-```{r}
-#setting up ANOVA model and testing assumptions
+```{r, pre-ANOVA work}
 
-TALL5 <- TALL4 |> filter(tht != 0.0)  
+##setting up ANOVA model and testing assumptions
 
-height_m <- lm(log(tht) ~ ttreatment + tblock, data = TALL5)
+TALL_ALIVE <- TALL5 |> filter(tht != 0.0) #creating dataframe with only alive saplings w/ recorded height data 
 
-plot(height_m)
 
-bartlett.test(log(tht)~ ttreatment, data = TALL5)
+##graphing: 
+
+hist(TALL_ALIVE$tht) #histogram of height, skewed a bit right even w/ outliers removed
+
+TALL_ALIVE |> ggplot() + aes(x = ttreatment, y = tht) + 
+  geom_boxplot() #looking at my alive sapling heights, AC and NR don't seem to be super normal 
+
+TALL_ALIVE |> group_by(ttreatment) |> count() #checking sample sizes to make sure NR group isn't being weird, pretty similar... 
+
+
+##making linear model: 
+
+height_m <- lm(tht ~ ttreatment + tblock, data = TALL_ALIVE) #creating linear model
+
+plot(height_m)  #residuals are looking pretty good lwk, qq could be better :/ 
+
+summary(height_m) #NR treatment most significant! 
+
+##homogeniety test: 
+
+shapiro.test(height_m$residuals) #checking the shapiro test to get a feel, only have 66 observations so it shouldn't be super crazy,,, 
+#shapiro test p = 0.3388
+
+#tried to do levenes test but it didn't like when my formula had a + interaction? it would only accept an interaction with * for some reason 
 ```
 
+```{r, ANOVA test}
+
+aov_heightm <- aov(tht ~ ttreatment + tblock, TALL_ALIVE) #running ANOVA
+
+summary(aov_heightm)  #lookin at results 
+
+TukeyHSD(aov_heightm) #lookin at the results but better
+
+#takeaways: 
+    #significant differences: 
+      #NR-AC, p = 0.0000000
+      #NR-DT, p = 0.0000000
+      #OS-NR, p = 0.0000002
+    #super similar: 
+      #OS-DT, p = 0.9928696
+    #overall natural recruits are doing some crazy stuff and no other treatment comes close to them,,, wacky
+```
+
+```{r, rough ANOVA plot}
+
+# pw_summary <- pw |> 
+#   group_by(water, plant) |> 
+#   summarise(
+#     mean = mean(height), 
+#     se = sd(height)/ sqrt(length(height)))
+# pw_summary
+
+#setting up summary table: 
+height_m_summary <- TALL_ALIVE |> 
+  group_by(ttreatment) |> 
+  summarize( 
+    mean = mean(tht), 
+    se = sd(tht) / sqrt (length(tht)))  #height mean and standard error
+
+height_m_summary #lookin
+
+
+#plotting violin w/ results: 
+
+TALL_ALIVE |> ggplot() + aes(x = ttreatment, y = tht, fill = ttreatment ) + 
+  geom_violin(alpha = 0.5) + 
+  stat_summary(fun = "mean", geom = "point") + #marking avgs in each group
+  stat_summary(fun.data = "mean_se", geom = "errorbar", aes(width = 0.2)) #setting up standard error bars, adjusting width 
+
+
+#make sure to add title, labels, legend and significance !!! 
+```
+
+regression time:
+
+- performing quick ANOVA on soil moisture by treatment type
+
+- regression w/ seedling height and soil moisture, to see if soil moisture can better explain height differences?
+
 ```{r}
+
+
+
 
 ```
