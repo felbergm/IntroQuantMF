@@ -7,13 +7,13 @@ editor: visual
 
 to-do list:
 
-- make boxplot of alive sapling heights to compare normality for anova test
+- make all the graphs and charts prettier
 
-- check for outliers in sapling heights too !!!
+- make pretty table for ANOVA and regression results????
 
-- do anova test on sapling heights
+- add comments and nice little paragraphs on everything to make everything be cute and cool
 
-loading in packages
+## loading in packages
 
 ```{r}
 #loading in packages
@@ -24,7 +24,7 @@ library(tidyr)
 library(ggplot2)
 ```
 
-reading data
+## reading data
 
 ```{r}
 #reading excel files: 
@@ -42,9 +42,9 @@ SPAD_Data_Raw <-
              na = "NA")  #tells it to read NA as missing data 
 ```
 
-cleaning up data
+## cleaning up data
 
-seedling height cleaning
+### seedling height cleaning
 
 ```{r, HEIGHT CLEANING}
 
@@ -91,10 +91,9 @@ outliers <- boxplot(TALL4$tht, plot=FALSE)$out  #assigning these values to a vec
 
 TALL5<- TALL4[-which(TALL4$tht %in% outliers),] #removing the outliers, reassigning data frame to TALL 5
 
-
 ```
 
-soil moisture cleaning
+### soil moisture cleaning
 
 ```{r, SOILMOIST CLEANING}
 
@@ -142,7 +141,9 @@ MOIST5 <- MOIST4 |> drop_na(VWC1_perc)
 rm(Height_Data_Raw, Moist_Data_Raw, MOIST1, MOIST2, MOIST3, SPAD_Data_Raw, TALL1, TALL2)
 ```
 
-height data time:
+## ANOVA Analysis
+
+### height data time:
 
 - get counts of alive/dead per treatment
 
@@ -202,6 +203,8 @@ summary(aov_heightm)  #lookin at results
 
 TukeyHSD(aov_heightm) #lookin at the results but better
 
+#### CONSIDER REMOVING NATURAL RECRUITS BECAUSE WE DON'T KNOW THEIR AGE!!!!! 
+
 #takeaways: 
     #significant differences: 
       #NR-AC, p = 0.0000000
@@ -210,16 +213,24 @@ TukeyHSD(aov_heightm) #lookin at the results but better
     #super similar: 
       #OS-DT, p = 0.9928696
     #overall natural recruits are doing some crazy stuff and no other treatment comes close to them,,, wacky
+
+TALL_NONR <- TALL6 |> filter(ttreatment != "NR")
+
+#redoing linear model with no naturals: 
+
+aov_heightnonrm <- aov(tht ~ ttreatment + tblock, TALL_NONR) #running ANOVA
+
+summary(aov_heightnonrm)  #lookin at results 
+
+TukeyHSD(aov_heightnonrm)
+
+#takeaways: 
+  #nothing is significant!!!!!!! 
+  #most similar: DT-AC, p = 0.8742861
+  #most different: OS-AC, p = 0.2602094
 ```
 
 ```{r, rough ANOVA plot}
-
-# pw_summary <- pw |> 
-#   group_by(water, plant) |> 
-#   summarise(
-#     mean = mean(height), 
-#     se = sd(height)/ sqrt(length(height)))
-# pw_summary
 
 #setting up summary table: 
 height_m_summary <- TALL_ALIVE |> 
@@ -242,14 +253,132 @@ TALL_ALIVE |> ggplot() + aes(x = ttreatment, y = tht, fill = ttreatment ) +
 #make sure to add title, labels, legend and significance !!! 
 ```
 
-regression time:
+### regression time:
 
 - performing quick ANOVA on soil moisture by treatment type
 
 - regression w/ seedling height and soil moisture, to see if soil moisture can better explain height differences?
 
+### questions to ask: 
+
+- ANOVA height regression- p value of 0???
+
+- why they hell are my blocks showing up in the ANOVA results..
+
+- i'm going to do regression with soil moisture, should i split it by wet/dry??
+
+- should i then split hte height data by wet dry in order to do the regression
+
+- the sample sizes are going to change and they're going to be itty bitty,,,,,
+
+  - solution: average by block AND treatment, so theres one value for each combination that i can match
+
+  - there is straight up no NR observations for the wet date... wat da hell
+
+```{r, quick ANOVA of soil moisture}
+
+
+MOIST5 |> ggplot() + aes(x = mtreatment, y = vwc_mean) + 
+  geom_boxplot() + facet_wrap(~mdate)
+
+
+```
+
+### splitting data wet/dry: 
+
+```{r, trying ANOVA anyways}
+
+##splitting height data by wet/dry 
+
+WET_TALL <- TALL6 |> filter(tdate == "2026-10-15") |> 
+  select(tdate, block_treat_mean) #taking just the date and the mean because I can
+
+DRY_TALL <- TALL6 |> filter(tdate != "2026-10-15") |> 
+  select(tdate, block_treat_mean) 
+
+#splitting moisture data by wet/dry: 
+
+WET_MOIST <- MOIST_N0 |> filter(mdate == "2026-10-21")
+
+DRY_MOIST <- MOIST_N0 |> filter(mdate != "2026-10-21")
+
+```
+
+### wet regression: 
+
+```{r}
+#DROP NR TREATMENT FROM SOIL MOISTURE REGRESSION AND STUFF 
+
+#joining wet data: 
+WET_JOIN <- full_join(WET_MOIST, WET_TALL,
+                      by = c('mblock' = 'tblock', 
+                             'mtreatment' = 'ttreatment')) |> select(
+                               mdate, mblock, mtreatment, vwc_mean, block_treat_mean
+                             ) |> drop_na(mdate)
+
+#quick point plot for fun 
+WET_JOIN |> ggplot() + aes(x = vwc_mean, y = block_treat_mean) +
+  geom_point() + geom_smooth(method = "lm", se = FALSE) + 
+  labs(title = "WET REGRESSION")
+  
+
+#setting up linear model: 
+WET_MODEL <- lm(block_treat_mean ~ vwc_mean, data = WET_JOIN)
+
+summary(WET_MODEL)
+
+plot(WET_MODEL)
+
+#looking at anova: 
+WET_ANOVA <- aov(vwc_mean ~ mtreatment+ mblock, data = WET_JOIN)
+
+summary(WET_ANOVA)
+
+TukeyHSD(WET_ANOVA) #tukey test on WET anova 
+#takeaways: 
+  #OS-AC, p = 0.0000000
+  #DT-AC, p = 0.0001724
+  #OS-DT, p = 0.0643769
+
+
+```
+
+### dry regression: 
+
 ```{r}
 
+#joining dry data: 
+DRY_JOIN <- full_join(DRY_MOIST, DRY_TALL,
+                      by = c('mblock' = 'tblock', 
+                             'mtreatment' = 'ttreatment')) |> select(
+                               mdate, mblock, mtreatment, vwc_mean, block_treat_mean
+                             ) |> filter(mtreatment != "NR") |> drop_na(mdate)
+#^^^^ joining datasets, selecting columns i want, DROPPING NR treatment, dropping NAs 
+
+#setting up linear model: 
+DRY_MODEL <- lm(block_treat_mean ~ vwc_mean, data = DRY_JOIN)
+
+summary(DRY_MODEL)
+
+plot(DRY_MODEL)
+
+#looking at anova: 
+DRY_ANOVA <- aov(vwc_mean ~ mtreatment+ mblock, data = DRY_JOIN)
+
+summary(DRY_ANOVA)
+
+TukeyHSD(DRY_ANOVA)#tukey on dry observations
+#most different: 
+  #DT-AC: 0.0000497
+  #DT-AC: 0.0031218
+#most similar: 
+  #OS-AC: 0.5229060
+
+
+#PLOTTING: 
+DRY_JOIN |> ggplot() + aes(x = vwc_mean, y = block_treat_mean) +
+  geom_point() + geom_smooth(method = "lm", se = FALSE) + 
+  labs(title = "DRY REGRESSION")
 
 
 
