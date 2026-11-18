@@ -7,11 +7,13 @@ editor: visual
 
 to-do list:
 
-- make all the graphs and charts prettier
+- make all the graphs and charts prettier - remember to add line equation to regression charts
 
 - make pretty table for ANOVA and regression results????
 
 - add comments and nice little paragraphs on everything to make everything be cute and cool
+
+- summary table for data- no changes or anything just to give basic feel of the data
 
 ## loading in packages
 
@@ -141,6 +143,13 @@ MOIST5 <- MOIST4 |> drop_na(VWC1_perc)
 rm(Height_Data_Raw, Moist_Data_Raw, MOIST1, MOIST2, MOIST3, SPAD_Data_Raw, TALL1, TALL2)
 ```
 
+## Descriptive Stats for Height and Soil Moisture: 
+
+```{r}
+
+
+```
+
 ## ANOVA Analysis
 
 ### height data time:
@@ -203,8 +212,6 @@ summary(aov_heightm)  #lookin at results
 
 TukeyHSD(aov_heightm) #lookin at the results but better
 
-#### CONSIDER REMOVING NATURAL RECRUITS BECAUSE WE DON'T KNOW THEIR AGE!!!!! 
-
 #takeaways: 
     #significant differences: 
       #NR-AC, p = 0.0000000
@@ -214,9 +221,11 @@ TukeyHSD(aov_heightm) #lookin at the results but better
       #OS-DT, p = 0.9928696
     #overall natural recruits are doing some crazy stuff and no other treatment comes close to them,,, wacky
 
-TALL_NONR <- TALL6 |> filter(ttreatment != "NR")
 
-#redoing linear model with no naturals: 
+
+#####redoing linear model with NO NATURAL RECRUITS: 
+
+TALL_NONR <- TALL6 |> filter(ttreatment != "NR") #removing natural recruits 
 
 aov_heightnonrm <- aov(tht ~ ttreatment + tblock, TALL_NONR) #running ANOVA
 
@@ -225,9 +234,9 @@ summary(aov_heightnonrm)  #lookin at results
 TukeyHSD(aov_heightnonrm)
 
 #takeaways: 
-  #nothing is significant!!!!!!! 
-  #most similar: DT-AC, p = 0.8742861
-  #most different: OS-AC, p = 0.2602094
+      #nothing is significant!!!!!!! 
+      #most similar: DT-AC, p = 0.8742861
+      #most different: OS-AC, p = 0.2602094
 ```
 
 ```{r, rough ANOVA plot}
@@ -259,7 +268,7 @@ TALL_ALIVE |> ggplot() + aes(x = ttreatment, y = tht, fill = ttreatment ) +
 
 - regression w/ seedling height and soil moisture, to see if soil moisture can better explain height differences?
 
-### questions to ask: 
+### questions to ask:
 
 - ANOVA height regression- p value of 0???
 
@@ -284,7 +293,7 @@ MOIST5 |> ggplot() + aes(x = mtreatment, y = vwc_mean) +
 
 ```
 
-### splitting data wet/dry: 
+### splitting data wet/dry:
 
 ```{r, trying ANOVA anyways}
 
@@ -304,7 +313,7 @@ DRY_MOIST <- MOIST_N0 |> filter(mdate != "2026-10-21")
 
 ```
 
-### wet regression: 
+### wet regression:
 
 ```{r}
 #DROP NR TREATMENT FROM SOIL MOISTURE REGRESSION AND STUFF 
@@ -343,7 +352,7 @@ TukeyHSD(WET_ANOVA) #tukey test on WET anova
 
 ```
 
-### dry regression: 
+### dry regression:
 
 ```{r}
 
