@@ -91,6 +91,8 @@ outliers <- boxplot(TALL4$tht, plot=FALSE)$out  #assigning these values to a vec
 
 TALL5<- TALL4[-which(TALL4$tht %in% outliers),] #removing the outliers, reassigning data frame to TALL 5
 
+TALL6 <- TALL5 |> group_by(ttreatment, tblock) |> mutate(block_treat_mean = mean(tht))
+
 ```
 
 ### soil moisture cleaning
@@ -148,7 +150,7 @@ rm(Height_Data_Raw, Moist_Data_Raw, MOIST1, MOIST2, MOIST3, SPAD_Data_Raw, TALL1
 
 #height summary: 
 
-height_summ <- TALL5 |> group_by(ttreatment, tdate) |> 
+height_summ <- TALL6 |> group_by(ttreatment, tdate) |> 
   summarize(mean_height       = mean(tht, na.rm = TRUE), 
             sd_height         = sd(tht, na.rm = TRUE), 
             sample_sz_height  = n(), 
@@ -156,9 +158,6 @@ height_summ <- TALL5 |> group_by(ttreatment, tdate) |>
   mutate_at(vars(mean_height, sd_height, se_height), # bonus line to reduce digits
             .funs = round, 2)
   
-
-height_summ |> knitr::kable(caption = "Seedling Height Summary Table")
-
 
 #soil moisture summary: 
 
@@ -189,7 +188,7 @@ moist_summ |> knitr::kable(caption = "Soil Moisture Summary Table",
 ```{r}
 
 
-TALL5 |> group_by(ttreatment) |> count(dead_alive) |>  ggplot() + 
+TALL6 |> group_by(ttreatment) |> count(dead_alive) |>  ggplot() + 
   aes(x = ttreatment, y = n, fill = dead_alive) + 
   geom_col(position = "fill") 
 
@@ -202,7 +201,7 @@ TALL5 |> group_by(ttreatment) |> count(dead_alive) |>  ggplot() +
 
 ##setting up ANOVA model and testing assumptions
 
-TALL_ALIVE <- TALL5 |> filter(tht != 0.0) #creating dataframe with only alive saplings w/ recorded height data 
+TALL_ALIVE <- TALL6 |> filter(tht != 0.0) #creating dataframe with only alive saplings w/ recorded height data 
 
 
 ##graphing: 
@@ -251,7 +250,7 @@ TukeyHSD(aov_heightm) #lookin at the results but better
 
 #####redoing linear model with NO NATURAL RECRUITS: 
 
-TALL_NONR <- TALL5 |> filter(ttreatment != "NR") #removing natural recruits 
+TALL_NONR <- TALL6 |> filter(ttreatment != "NR") #removing natural recruits 
 
 aov_heightnonrm <- aov(tht ~ ttreatment + tblock, TALL_NONR) #running ANOVA
 
@@ -321,21 +320,24 @@ MOIST5 |> ggplot() + aes(x = mtreatment, y = vwc_mean) +
 
 ### splitting data wet/dry:
 
-```{r, trying ANOVA anyways}
+```{r}
+
+#dropping NR from moisture data: 
+MOIST_N0 <- MOIST5 |> filter(mtreatment != "NR")
 
 ##splitting height data by wet/dry 
 
-WET_TALL <- TALL6 |> filter(tdate == "2026-10-15") |> 
+WET_TALL <- TALL_NONR |> filter(tdate == "2026-10-15") |> 
   select(tdate, block_treat_mean) #taking just the date and the mean because I can
 
-DRY_TALL <- TALL6 |> filter(tdate != "2026-10-15") |> 
+DRY_TALL <- TALL_NONR |> filter(tdate != "2026-10-15") |> 
   select(tdate, block_treat_mean) 
 
 #splitting moisture data by wet/dry: 
 
 WET_MOIST <- MOIST_N0 |> filter(mdate == "2026-10-21")
 
-DRY_MOIST <- MOIST_N0 |> filter(mdate != "2026-10-21")
+DRY_MOIST <- MOIST_N0 |> filter(mdate != "2026-10-21") #the dates on the soil moisture data are different,,,, girl
 
 ```
 
