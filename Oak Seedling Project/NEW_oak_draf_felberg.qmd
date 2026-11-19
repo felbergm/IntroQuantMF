@@ -13,8 +13,6 @@ to-do list:
 
 - add comments and nice little paragraphs on everything to make everything be cute and cool
 
-- summary table for data- no changes or anything just to give basic feel of the data
-
 ## loading in packages
 
 ```{r}
@@ -143,24 +141,53 @@ MOIST5 <- MOIST4 |> drop_na(VWC1_perc)
 rm(Height_Data_Raw, Moist_Data_Raw, MOIST1, MOIST2, MOIST3, SPAD_Data_Raw, TALL1, TALL2)
 ```
 
-## Descriptive Stats for Height and Soil Moisture: 
+## Descriptive Stats for Height and Soil Moisture:
 
 ```{r}
 
 
+#height summary: 
+
+height_summ <- TALL5 |> group_by(ttreatment, tdate) |> 
+  summarize(mean_height       = mean(tht, na.rm = TRUE), 
+            sd_height         = sd(tht, na.rm = TRUE), 
+            sample_sz_height  = n(), 
+            se_height         = sd_height / sqrt(sample_sz_height)) |> 
+  mutate_at(vars(mean_height, sd_height, se_height), # bonus line to reduce digits
+            .funs = round, 2)
+  
+
+height_summ |> knitr::kable(caption = "Seedling Height Summary Table")
+
+
+#soil moisture summary: 
+
+moist_summ <- MOIST5 |> group_by(mtreatment, mdate) |> 
+  summarize(mean_moist       = mean(vwc_mean, na.rm = TRUE), 
+            sd_moist         = sd(vwc_mean, na.rm = TRUE), 
+            sample_sz_moist  = n(), 
+            se_moist         = sd_moist / sqrt(sample_sz_moist)) |> 
+  mutate_at(vars(mean_moist, sd_moist, se_moist), # bonus line to reduce digits
+            .funs = round, 2)
+
+
+#summary tables all nice and pretty 
+
+height_summ |> knitr::kable(caption = "Seedling Height Summary Table",  
+                            col.names = (c("Treatment", "Date", "Mean", "Standard Deviation", "Sample Size", "Standard Error"))) 
+
+
+moist_summ |> knitr::kable(caption = "Soil Moisture Summary Table", 
+                           col.names = (c("Treatment", "Date", "Mean", "Standard Deviation", "Sample Size", "Standard Error"))) 
+      
 ```
 
 ## ANOVA Analysis
 
 ### height data time:
 
-- get counts of alive/dead per treatment
-
-- anova between heights - height \~ treatment + block + date (?)
-
-- tukey test to see which block is best
-
 ```{r}
+
 
 TALL5 |> group_by(ttreatment) |> count(dead_alive) |>  ggplot() + 
   aes(x = ttreatment, y = n, fill = dead_alive) + 
@@ -222,10 +249,9 @@ TukeyHSD(aov_heightm) #lookin at the results but better
     #overall natural recruits are doing some crazy stuff and no other treatment comes close to them,,, wacky
 
 
-
 #####redoing linear model with NO NATURAL RECRUITS: 
 
-TALL_NONR <- TALL6 |> filter(ttreatment != "NR") #removing natural recruits 
+TALL_NONR <- TALL5 |> filter(ttreatment != "NR") #removing natural recruits 
 
 aov_heightnonrm <- aov(tht ~ ttreatment + tblock, TALL_NONR) #running ANOVA
 
