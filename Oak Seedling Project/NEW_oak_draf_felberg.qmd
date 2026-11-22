@@ -187,10 +187,14 @@ moist_summ |> knitr::kable(caption = "Soil Moisture Summary Table",
 
 ```{r}
 
+cols <- c("Dead" = "#DC3220", "Alive" = "#005AB5") #setting up specific colors for dead and alive 
 
 TALL6 |> group_by(ttreatment) |> count(dead_alive) |>  ggplot() + 
   aes(x = ttreatment, y = n, fill = dead_alive) + 
-  geom_col(position = "fill") 
+  geom_col(position = "fill") + scale_fill_manual(
+    values = cols, aesthetics = "fill"
+  ) #manually assigning the values to the colors from earlier
+
 
 #NR has highest number of alive seedlings, followed by AC, then DT
 #OS has highest number of dead, followed by DT 
@@ -203,7 +207,8 @@ TALL6 |> group_by(ttreatment) |> count(dead_alive) |>  ggplot() +
 
 TALL_ALIVE <- TALL6 |> filter(tht != 0.0) #creating dataframe with only alive saplings w/ recorded height data 
 
-
+TALL_ALIVE |> ggplot() + aes(x = ttreatment, y = tht) +
+  geom_boxplot()
 ##graphing: 
 
 hist(TALL_ALIVE$tht) #histogram of height, skewed a bit right even w/ outliers removed
