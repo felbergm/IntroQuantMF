@@ -22,8 +22,13 @@ library(readxl)
 library(rstatix)
 library(tidyr)
 library(ggplot2)
+
+#extras for nice looking tables: 
 install.packages("gt")
 library(gt)
+install.packages("gtExtras")
+library(gtExtras)
+
 ```
 
 ## reading data
@@ -379,7 +384,7 @@ violin_anova + labs(
 ggsave(filename = "height_anova_violin.png",  plot = get_last_plot(), width = 6, height = 4)  #savin it 
 ```
 
-### regression time:
+## Regression Analysis: 
 
 ```{r}
 
@@ -424,7 +429,6 @@ WET_JOIN <- full_join(WET_MOIST, WET_TALL,
                              'mtreatment' = 'ttreatment')) |> select(
                                mdate, mblock, mtreatment, vwc_mean, block_treat_mean
                              ) |> drop_na(mdate)
-
 
 
 #setting up linear model: 
@@ -517,26 +521,8 @@ ggsave(filename = "dry_reg_plot.png", plot = dry_plot,  width = 6, height = 4)
 ```
 
 ```{r}
-#making nice anova table for soil moisture: 
-# gt(height_summ) |> tab_header(
-#   title = "Oak Seedling Height (cm) Summary Statistics by Microhabitat") |>  #setting title
-#   cols_label( ttreatment = "Microhabitat Type",  #changing column titles 
-#               mean_height = "Mean", 
-#               sd_height = "Standard Deviation", 
-#               sample_sz_height = "Sample Size", 
-#               se_height = "Standard Error" ) |>  
-#   tab_style( style = list(cell_text(weight = "bold")),
-#              locations = cells_column_labels(everything())) |>  #bolding column titles 
-#   
-#   #replacing the treatment acronyms in height: 
-#   sub_values(columns = ttreatment,
-#              values = "AC", replacement = "Adult Canopy") |> 
-#   sub_values(columns = ttreatment,
-#              values = "DT", replacement = "Woody Debris") |> 
-#   sub_values(columns = ttreatment,
-#              values = "NR", replacement = "Natural Recruit") |> 
-#   sub_values(columns = ttreatment,
-             # values = "OS", replacement = "Open Space")
+#trying to make nice tables for anovas and tukeys: 
+
 summary(WET_ANOVA)
 
 #sumamrizing each anova: 
@@ -567,9 +553,58 @@ gt(combineaov_summ)
 
 #dry: 
 dry_tukey <- TukeyHSD(DRY_ANOVA)
-drytukey_df <- dry_tukey$mtreatment |> as.data.frame() #convert to df 
+drytukey_df <- dry_tukey$mtreatment |> as.data.frame() |> round(digits = 2)#convert to df 
 drytukey_df<- drytukey_df |>  rownames_to_column(var = "treatments") |> 
   select(treatments, diff, "p adj")
 
-gt(drytukey_df)
+drytukey_df
+
+
+#wet: 
+wet_tukey <- TukeyHSD(WET_ANOVA) 
+wettukey_df <- wet_tukey$mtreatment |> as.data.frame() |> round(digits = 2)
+wettukey_df<- wettukey_df |>  rownames_to_column(var = "treatments") |> 
+  select(treatments, diff, "p adj") 
+
+#combing wet and dry tukey dfs: 
+combinetukeys <- bind_rows(drytukey_df, wettukey_df)
+
+combinetukeys
+
+
+#making the ultimate tukey table: 
+gtcombine <- gt(combinetukeys) |> tab_header(title = "Soil Moisture Tukey's HSD Results") |> #titling table
+  tab_row_group("Wet Observations", c(4:6)) |>  #seperating wet data
+  tab_options(row_group.default_label = "Dry Observations") |> 
+  #changing column names: 
+  cols_label( treatments = "Microhabitat Type",
+              diff = "Difference", 
+              "p adj" = "p-Value")
+
+gtcombine
+
+#setting up significance stars ***: 
+stars = c("ns", "ns", "**", "***", "***", "ns")
+
+#replacing treatment acronyms: 
+gtcombine <- gtcombine |> sub_values(columns = treatments,
+                        values = "DT-AC", 
+                        replacement = "Woody Debris - Adult Canopy")|>
+              sub_values(columns = treatments,
+                         values = "OS-AC", 
+                         replacement = "Open Space - Adult Canopy") |> 
+              sub_values(columns = treatments,
+                         values = "OS-DT", 
+                         replacement = "Open Space - Woody Debris") |> 
+  #adding nice divider and meessing with spacing between values
+  gt_add_divider(columns = treatments) |>   opt_horizontal_padding(scale = 3) |> 
+  #adding significance star column: 
+  cols_add( Significance = stars)
+  
+
+
+
+gtsave(gtcombine, filename = "tukey_table.png")
+
+
 ```
