@@ -262,6 +262,7 @@ More: http://zevross.com/blog/2014/08/04/beautiful-plotting-in-r-a-ggplot2-cheat
 ## Combining multiple plots into one figure elegantly
 
 ```{r Combining multiple plots with patchwork}
+install.packages("patchwork")
 library(patchwork)
 
 PinePlot + OldFaithfulPlot / BugSprayPlot

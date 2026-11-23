@@ -22,6 +22,8 @@ library(readxl)
 library(rstatix)
 library(tidyr)
 library(ggplot2)
+install.packages("gt")
+library(gt)
 ```
 
 ## reading data
@@ -150,7 +152,7 @@ rm(Height_Data_Raw, Moist_Data_Raw, MOIST1, MOIST2, MOIST3, SPAD_Data_Raw, TALL1
 
 #height summary: 
 
-height_summ <- TALL6 |> group_by(ttreatment, tdate) |> 
+height_summ <- TALL6 |> group_by(ttreatment) |> 
   summarize(mean_height       = mean(tht, na.rm = TRUE), 
             sd_height         = sd(tht, na.rm = TRUE), 
             sample_sz_height  = n(), 
@@ -161,7 +163,7 @@ height_summ <- TALL6 |> group_by(ttreatment, tdate) |>
 
 #soil moisture summary: 
 
-moist_summ <- MOIST5 |> group_by(mtreatment, mdate) |> 
+moist_summ <- MOIST5 |> group_by(mtreatment) |> 
   summarize(mean_moist       = mean(vwc_mean, na.rm = TRUE), 
             sd_moist         = sd(vwc_mean, na.rm = TRUE), 
             sample_sz_moist  = n(), 
@@ -173,28 +175,89 @@ moist_summ <- MOIST5 |> group_by(mtreatment, mdate) |>
 #summary tables all nice and pretty 
 
 height_summ |> knitr::kable(caption = "Seedling Height Summary Table",  
-                            col.names = (c("Treatment", "Date", "Mean", "Standard Deviation", "Sample Size", "Standard Error"))) 
+                            col.names = (c("Treatment", "Mean", "Standard Deviation", "Sample Size", "Standard Error"))) 
 
 
 moist_summ |> knitr::kable(caption = "Soil Moisture Summary Table", 
-                           col.names = (c("Treatment", "Date", "Mean", "Standard Deviation", "Sample Size", "Standard Error"))) 
-      
+                           col.names = (c("Treatment", "Mean", "Standard Deviation", "Sample Size", "Standard Error"))) 
+
+
+###setting up very nice and pretty tables: 
+
+#height summary: 
+height_gt <- gt(height_summ) |> tab_header(
+  title = "Oak Seedling Height (cm) Summary Statistics by Microhabitat") |>  #setting title
+  cols_label( ttreatment = "Microhabitat Type",  #changing column titles 
+              mean_height = "Mean", 
+              sd_height = "Standard Deviation", 
+              sample_sz_height = "Sample Size", 
+              se_height = "Standard Error" ) |>  
+  tab_style( style = list(cell_text(weight = "bold")),
+locations = cells_column_labels(everything())) |>  #bolding column titles 
+
+#replacing the treatment acronyms in height: 
+sub_values(columns = ttreatment,
+           values = "AC", replacement = "Adult Canopy") |> 
+sub_values(columns = ttreatment,
+           values = "DT", replacement = "Woody Debris") |> 
+sub_values(columns = ttreatment,
+           values = "NR", replacement = "Natural Recruit") |> 
+sub_values(columns = ttreatment,
+           values = "OS", replacement = "Open Space")
+
+#soil moisture summary: 
+moist_gt <- gt(moist_summ) |> tab_header(
+  title = "Soil VWC % by Microhabitat") |>  #title time 
+  cols_label( mtreatment = "Microhabitat Type",  #changing column titles 
+              mean_moist = "Mean", 
+              sd_moist = "Standard Deviation", 
+              sample_sz_moist = "Sample Size", 
+              se_moist = "Standard Error" ) |>  
+  tab_style( style = list(cell_text(weight = "bold")),
+             locations = cells_column_labels(everything())) |>  #bolding column titles
+  #replacing the treatment acronyms in height: 
+  sub_values(columns = mtreatment,
+             values = "AC", replacement = "Adult Canopy") |> 
+  sub_values(columns = mtreatment,
+             values = "DT", replacement = "Woody Debris") |> 
+  sub_values(columns = mtreatment,
+             values = "NR", replacement = "Natural Recruit") |> 
+  sub_values(columns = mtreatment,
+             values = "OS", replacement = "Open Space")
+
+#saving em: 
+gtsave(height_gt, filename = "height_summ_table.png")
+
+gtsave(moist_gt, filename = "moist_summ_table.png")
 ```
 
 ## ANOVA Analysis
 
-### height data time:
+### height data tim
 
 ```{r}
 
 cols <- c("Dead" = "#DC3220", "Alive" = "#005AB5") #setting up specific colors for dead and alive 
 
-TALL6 |> group_by(ttreatment) |> count(dead_alive) |>  ggplot() + 
+survivor_bar <- TALL6 |> group_by(ttreatment) |> count(dead_alive) |>  ggplot() + 
   aes(x = ttreatment, y = n, fill = dead_alive) + 
   geom_col(position = "fill") + scale_fill_manual(
-    values = cols, aesthetics = "fill"
-  ) #manually assigning the values to the colors from earlier
+    values = cols, aesthetics = "fill"  #manually assigning the values to the colors from earlier 
+  )  
 
+survivor_bar + labs(  #assignign labels and titles for everything 
+    title = "Seedling Survivorship by Microhabitat", 
+    x = "Microhabitat Type", 
+    y = "Survivorship", 
+    fill = "Survival Status"
+  ) + 
+  scale_x_discrete( #renaming microhabitat types 
+    labels = c("Adult Canopy", "Woody Debris", "Natural Recruit", "Open Space")
+  )
+
+
+
+ggsave(filename = "survivor_bar_plot.png",  plot = get_last_plot(), width = 6, height = 4)  #savin it 
 
 #NR has highest number of alive seedlings, followed by AC, then DT
 #OS has highest number of dead, followed by DT 
@@ -281,42 +344,46 @@ height_m_summary <- TALL_ALIVE |>
 height_m_summary #lookin
 
 
-#plotting violin w/ results: 
+#####plotting violin w/ results: 
 
-TALL_ALIVE |> ggplot() + aes(x = ttreatment, y = tht, fill = ttreatment ) + 
+violin_anova <- TALL_ALIVE |> ggplot() + 
+  aes(x = ttreatment, y = tht, fill = ttreatment ) + 
   geom_violin(alpha = 0.5) + 
-  stat_summary(fun = "mean", geom = "point") + #marking avgs in each group
-  stat_summary(fun.data = "mean_se", geom = "errorbar", aes(width = 0.2)) #setting up standard error bars, adjusting width 
+  stat_summary(fun = "mean", 
+               geom = "point") + #marking avgs in each group
+  stat_summary(fun.data = "mean_se", 
+               geom = "errorbar", aes(width = 0.2)) + #error bars
+  theme(legend.position = "none")
 
+violin_anova
 
-#make sure to add title, labels, legend and significance !!! 
+#adding labels and significance + stuff: 
+
+violin_anova + labs(
+  title = "ANVOA Results: Seedling Heights by Microhabitat", 
+  x = "Microhabitat type", 
+  y = "Seedling Height (cm)") +  #nice titles 
+  scale_x_discrete( #renaming microhabitat types 
+    labels = c("Adult Canopy", "Woody Debris", "Natural Recruit", "Open Space")
+  ) + 
+  #adding significance CLD labels: 
+  annotate("text", 
+           x = "AC", y = 26, label = "A") + 
+  annotate("text", 
+           x = "DT", y = 26, label = "A") + 
+  annotate("text", 
+           x = "NR", y = 37, label = "B") + 
+  annotate("text", 
+           x = "OS", y = 26, label = "A") 
+
+ggsave(filename = "height_anova_violin.png",  plot = get_last_plot(), width = 6, height = 4)  #savin it 
 ```
 
 ### regression time:
 
-- performing quick ANOVA on soil moisture by treatment type
+```{r}
 
-- regression w/ seedling height and soil moisture, to see if soil moisture can better explain height differences?
-
-### questions to ask:
-
-- ANOVA height regression- p value of 0???
-
-- why they hell are my blocks showing up in the ANOVA results..
-
-- i'm going to do regression with soil moisture, should i split it by wet/dry??
-
-- should i then split hte height data by wet dry in order to do the regression
-
-- the sample sizes are going to change and they're going to be itty bitty,,,,,
-
-  - solution: average by block AND treatment, so theres one value for each combination that i can match
-
-  - there is straight up no NR observations for the wet date... wat da hell
-
-```{r, quick ANOVA of soil moisture}
-
-
+#looking at moisture data 
 MOIST5 |> ggplot() + aes(x = mtreatment, y = vwc_mean) + 
   geom_boxplot() + facet_wrap(~mdate)
 
@@ -358,18 +425,18 @@ WET_JOIN <- full_join(WET_MOIST, WET_TALL,
                                mdate, mblock, mtreatment, vwc_mean, block_treat_mean
                              ) |> drop_na(mdate)
 
-#quick point plot for fun 
-WET_JOIN |> ggplot() + aes(x = vwc_mean, y = block_treat_mean) +
-  geom_point() + geom_smooth(method = "lm", se = FALSE) + 
-  labs(title = "WET REGRESSION")
-  
+
 
 #setting up linear model: 
 WET_MODEL <- lm(block_treat_mean ~ vwc_mean, data = WET_JOIN)
 
 summary(WET_MODEL)
 
-plot(WET_MODEL)
+plot(WET_MODEL) 
+
+#getting coefficents for plot: 
+summary(WET_MODEL)$r.squared    # 0.1113459
+summary(WET_MODEL)$coefficients #slope = 0.3383019, intercept = 10.4355425  
 
 #looking at anova: 
 WET_ANOVA <- aov(vwc_mean ~ mtreatment+ mblock, data = WET_JOIN)
@@ -381,8 +448,21 @@ TukeyHSD(WET_ANOVA) #tukey test on WET anova
   #OS-AC, p = 0.0000000
   #DT-AC, p = 0.0001724
   #OS-DT, p = 0.0643769
+```
 
+```{r}
+######regression point plot
+wet_plot <- WET_JOIN |> ggplot() + aes(x = vwc_mean, y = block_treat_mean) +
+  geom_point() + geom_smooth(method = "lm", se = FALSE) + 
+  theme(legend.position = "none") + 
+  labs(title = "Wet Observations: Mean VWC vs. Mean Seedling Height",  #nice labels 
+       x = "VWC %", 
+       y = "Seedling Height (cm)") + 
+  geom_text(x = 10, y = 1, label = "R-squared = 0.11, y = 0.34x + 10.44") #adding equation from model coefficients 
 
+wet_plot
+
+ggsave(filename = "wet_reg_plot.png",  plot = wet_plot, width = 6, height = 4)
 ```
 
 ### dry regression:
@@ -404,6 +484,10 @@ summary(DRY_MODEL)
 
 plot(DRY_MODEL)
 
+#getting coefficents for plot: 
+summary(DRY_MODEL)$r.squared    #  0.09554909
+summary(DRY_MODEL)$coefficients #slope = 1.196139, intercept = 6.134646  
+
 #looking at anova: 
 DRY_ANOVA <- aov(vwc_mean ~ mtreatment+ mblock, data = DRY_JOIN)
 
@@ -416,12 +500,76 @@ TukeyHSD(DRY_ANOVA)#tukey on dry observations
 #most similar: 
   #OS-AC: 0.5229060
 
+```
 
+```{r}
 #PLOTTING: 
-DRY_JOIN |> ggplot() + aes(x = vwc_mean, y = block_treat_mean) +
+dry_plot <- DRY_JOIN |> ggplot() + aes(x = vwc_mean, y = block_treat_mean) +
   geom_point() + geom_smooth(method = "lm", se = FALSE) + 
-  labs(title = "DRY REGRESSION")
+  labs(title = "DRY REGRESSION") + 
+  theme(legend.position = "none") + 
+  labs(title = "Dry Observations: Mean VWC vs. Mean Seedling Height",  #nice labels 
+       x = "VWC %", 
+       y = "Seedling Height (cm)") + 
+  geom_text(x = 2.5, y = 5, label = "R-squared = 0.10, y = 1.20x + 6.13") #adding equation 
+
+ggsave(filename = "dry_reg_plot.png", plot = dry_plot,  width = 6, height = 4)
+```
+
+```{r}
+#making nice anova table for soil moisture: 
+# gt(height_summ) |> tab_header(
+#   title = "Oak Seedling Height (cm) Summary Statistics by Microhabitat") |>  #setting title
+#   cols_label( ttreatment = "Microhabitat Type",  #changing column titles 
+#               mean_height = "Mean", 
+#               sd_height = "Standard Deviation", 
+#               sample_sz_height = "Sample Size", 
+#               se_height = "Standard Error" ) |>  
+#   tab_style( style = list(cell_text(weight = "bold")),
+#              locations = cells_column_labels(everything())) |>  #bolding column titles 
+#   
+#   #replacing the treatment acronyms in height: 
+#   sub_values(columns = ttreatment,
+#              values = "AC", replacement = "Adult Canopy") |> 
+#   sub_values(columns = ttreatment,
+#              values = "DT", replacement = "Woody Debris") |> 
+#   sub_values(columns = ttreatment,
+#              values = "NR", replacement = "Natural Recruit") |> 
+#   sub_values(columns = ttreatment,
+             # values = "OS", replacement = "Open Space")
+summary(WET_ANOVA)
+
+#sumamrizing each anova: 
+wetaov_summ <- anova_summary(WET_ANOVA)
+dryaov_summ <- anova_summary(DRY_ANOVA) 
+
+#checking results: 
+wetaov_summ
+# Effect DFn DFd      F        p p<.05   ges
+# 1 trt  2   2  62 23.738 2.21e-08     1 0.434
+# 2      1   3  62 10.282 1.38e-05     1 0.332
+dryaov_summ
+# Effect DFn DFd     F     p p<.05   ges
+# 1 trt  2   2  47 5.236 0.009     1 0.182
+# 2      1   3  47 2.994 0.040     1 0.160
 
 
+combineaov_summ <- bind_rows(wetaov_summ, dryaov_sum) #combinging anova summaries 
 
+combineaov_summ <- combineaov_summ [ c(1,3), ]  #dropping rows with block values 
+
+combineaov_summ  #checkin 
+
+#making into a nice table! 
+gt(combineaov_summ)
+
+#putting tukey results in table: 
+
+#dry: 
+dry_tukey <- TukeyHSD(DRY_ANOVA)
+drytukey_df <- dry_tukey$mtreatment |> as.data.frame() #convert to df 
+drytukey_df<- drytukey_df |>  rownames_to_column(var = "treatments") |> 
+  select(treatments, diff, "p adj")
+
+gt(drytukey_df)
 ```
