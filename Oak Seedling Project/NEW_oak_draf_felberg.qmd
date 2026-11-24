@@ -384,7 +384,7 @@ violin_anova + labs(
 ggsave(filename = "height_anova_violin.png",  plot = get_last_plot(), width = 6, height = 4)  #savin it 
 ```
 
-## Regression Analysis: 
+## Regression Analysis:
 
 ```{r}
 
