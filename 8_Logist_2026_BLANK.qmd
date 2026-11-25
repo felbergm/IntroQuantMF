@@ -11,17 +11,17 @@ editor: visual
 Logistic Regression is for when your **response variable is categorical, but your predictor is continuous,** and mostly when it can only be in one of two forms, aka, **binomial**. This type of test is concerned with the **ODDS** of getting one state or the other of your binomial variable, depending on the state of a quantitative predictor variable.
 
 ```{r}
-load(file = )
+load(file = "Demo Data Files/S4E2e.RData")
 
-guppy <- read.csv()
-lions <- 
-earthworms <-
+guppy <- read.csv(file = "Demo Data Files/chap17f9_1GuppyColdDeath.csv")
+lions <- read.csv(file = "Demo Data Files/chap17e1LionNoses.csv")
+earthworms <- read.csv(file = "Demo Data Files/chap17q17EarthwormsAndNitrogen.csv")
 ```
 
 Load packages
 
 ```{r}
-library()
+library(tidyverse)
 ```
 
 ## Simple Logistic Regression
@@ -37,7 +37,9 @@ This dataset contains survey information on dozens of different ponds, and then 
 The "macro" column indicates the percent cover of vegetation on the pond.
 
 ```{r}
-glimpse()
+glimpse(gcn)  #contains survey information on ponds and if newts wer efound or not 
+#presence is newt: 0 = no newt, 1 = newt 
+#macro: % cover of vegetation on the pond
 ```
 
 #### Step 2: Visualize the data
@@ -45,24 +47,26 @@ glimpse()
 If we try just a scatter, we're going to miss out on observations because they all overlap...
 
 ```{r}
-ggplot()+
-  aes()+
+ggplot(gcn)+
+  aes(x = macro, y = presence)+ 
+  geom_point()
   
 ```
 
 It's better if we add some jitter so we can see all the observations.
 
 ```{r}
-ggplot()+
-  geom_jitter()
+ggplot(gcn)+ aes(x = macro, y = presence) + 
+  geom_jitter(height = 0.1, shape = 1)  #adjusting the amount of top to bottom jitter and changing the shape to open transparent cirlces 
 ```
 
 Another way to do it is with geom_count(), which sizes the circle based on how many overlapping observations it contains.
 
 ```{r}
-newt_plot <- ggplot()
+newt_plot <- ggplot(gcn) + aes(x = macro, y = presence) + 
+  geom_count()
 
-
+newt_plot   #gives you a scaled size dot instead of a bunch of little dots in an area. bigger dots are more observations 
 ```
 
 What variables are here?
@@ -87,9 +91,11 @@ The setup of this function is the same as for `lm(),` except that we specify a *
 3.  The [link function]{.underline} (the function that transforms the relationship to make it linear)
 
 ```{r}
-newt.glm <- glm(, data = , family = )
+newt.glm <- glm(presence ~ macro, data = gcn, family = binomial(link = "logit")) 
+#data = where to look for numbers 
 
-summary()
+summary(newt.glm)
+#macro is a statistically significant variable!!! yay 
 ```
 
 Is macro statistically significant? What does that mean?
@@ -100,17 +106,21 @@ Instead of R^2^ we look at D^2^ for Logistic Regression, which we can interpret 
 
 ```{r}
 
+#we need to look at D^2  to see how strong the relationship is, we do this by looking at the deviance vs. the null deviance 
+
+newt.glm$deviance
+newt.glm$null.deviance
 
 
-
-1 - 
+#equation for D^2: 
+1 - (newt.glm$deviance / newt.glm$null.deviance) #we can explain 5% of the variance. noice. 
 ```
 
 Not that good of a predictor! Let's look at the plot:
 
 ```{r}
 newt_plot+
-  stat_smooth()
+  stat_smooth(method = "glm", method.args = list(family = "binomial"), se = FALSE)
 ```
 
 What is the likelihood of finding a newt if you have 50% cover of macrophytes on your pond?
@@ -119,12 +129,13 @@ What is the likelihood of finding a newt if you have 50% cover of macrophytes on
 #this is just our model from above again
 newt.glm
 
-nd <- data.frame(macro = ) # This creates a new data frame with some x values
+nd <- data.frame(macro = c(40, 50, 60)) # This creates a new data frame with some x values, for hypothetical macro values 
 
-nd # let us look at them
+nd
 
 
-predict() # This function uses the model and the new data (that we generated a second ago) to make a prediction for the values. 
+predict(newt.glm, newdata = nd, type = "response") # This function uses the model and the new data (that we generated a second ago) to make a prediction for the values. 
+#first row represents each number in order, second row represents the probability 
 ```
 
 ### Example 2: Guppy Cold Death
@@ -136,9 +147,9 @@ We saw this example in our lecture.
 This dataframe is formatted weird, so I've taken care of the cleaning here.
 
 ```{r}
-glimpse()
+glimpse(guppy)
 
-guppy <- %>% 
+guppy <- 
   mutate()
 
 glimpse()
@@ -147,7 +158,8 @@ glimpse()
 #### Step 1: Plot the Data
 
 ```{r}
-guppyplot <- 
+guppyplot <- guppy |> ggplot() + aes(x = exposureDurationMin, y = mortality) + 
+  geom_jitter(height = 0.05, shape = 1)
 
 guppyplot
 ```
@@ -155,10 +167,12 @@ guppyplot
 #### Step 2: make the model. Is duration exposure a significant predictor of guppy death?
 
 ```{r}
-guppymod <- 
+guppymod <- glm(mortality ~ exposureDurationMin,
+                data = guppy, 
+                family = binomial(link = "logit"))
 
-summary()
-
+  
+summary(guppymod) #yes! significant predictor!!! 
 ```
 
 #### Step 3: How much of the variation in guppy death is explained by how long they were exposed to freezing temperatures?
@@ -166,13 +180,16 @@ summary()
 ```{r}
 # calculate the D^2
 
+1 - (guppymod$deviance / guppymod$null.deviance) #explains 21% of the variance 
 ```
 
 #### Step 4: Plot your data again and add a smoothed logistic regression line.
 
 ```{r}
+#adding line :3c 
 guppyplot + 
-  stat_smooth(method=, method.args=), se=)
+  stat_smooth(method = "glm", method.args = list(family = "binomial"), 
+              se= FALSE)
 
 
 ```
@@ -181,15 +198,21 @@ guppyplot +
 
 ```{r}
 
+#looking at our graph, we can see that 50% of guppies die at the 5-8 minute mark. so we're going to run a couple of different numbers through the predict formula 
+
+nd <- data.frame(exposureDurationMin = c(5, 6, 7, 8, 6.9))
+
+predict(guppymod, newdata = nd, type = "response")  #about 7 minutes, we get 50% exposure !! 
+
 ```
 
 ## Multiple Logistic Regression - using STEPWISE regression
 
-Back to our newt model, that really was a terrible fit though! Let's see if we can get a better model using the `add1()` function for stepwise multiple logistic regression.
+Back to our newt model, that really was a terrible fit though! Let's see if we can get a better model using the `add1()` function for stepwise multiple logistic regression. applicable to multiple linear regression (the normal style) as well
 
 Stepwise regression helps choose which variables to include in a model by adding them in one at a time and testing how much better they make the fit.
 
-We start with a null model - our formula is just `response ~ 1` , with the number 1 as a stand-in for "nothing at all".
+We start with a null model - our formula is just `response ~ 1` , with the number 1 as a stand-in for "nothing at all". basically there is no predictor / independent variable at all
 
 We then use the `add1()` function on that model, give it the dataset and a test (`Chisq` here), and what it returns is the results of each of the variables in that dataset if they were added to the model.
 
@@ -207,10 +230,14 @@ If the chi-square value is \<0.05 and the AIC score is LOWER than the first mode
 
 ```{r}
 #null model
-newt_mod <- 
+newt_mod <- glm(presence ~ 1, data = gcn, family = binomial) #link = logit is assumed for binomial so we can skip that. only define your link if you're doing something weirder than logit 
 
 # this function tests all the other variables for their
-add1()
+add1(newt_mod, gcn, test = "Chisq")  #now we're adding in our other vraibles to the model as presence as a function of XXX, and running it through a chi Square 
+
+#remember! the best AIC = the lowest!!! 
+#HSI has the best AIC score, AND a significant p value 
+#remember the top <none> model is the presence ~ 1 model 
 ```
 
 We look to see which one has the GREATEST reduction in the AIC score, then add that variable to the systematic component of our model in place of the 1 we had before.
@@ -230,13 +257,24 @@ E.g.,
 And we do our comparison of AIC scores again.
 
 ```{r}
-newt_mod <- 
+#adding the HSI variable into the formula 
+newt_mod <- glm(presence ~ HSI, data = gcn, family = binomial) #new model!! 
+
+#doing another run of add1 to see if theres another variable we can add to improve our fit: 
+add1(newt_mod, gcn, test = "Chisq")
+
+#area, dry, and land variables seem to be good and kinda significant
 ```
 
 repeat...
 
 ```{r}
-newt_mod <- 
+#adding area variable
+newt_mod <- glm(presence ~ HSI + area, data = gcn, family = binomial) #new model!! 
+add1(newt_mod, gcn, test = "Chisq")
+
+#land doesnt add that much, we could hypothetically stop here 
+#we are looking for the lowest AIC with the least amount of terms. we don't want to overextend our model crazy style 
 ```
 
 ```{r}
@@ -254,13 +292,15 @@ newt_mod <-
 Let's check our our final model!
 
 ```{r}
-summary()
+summary(newt_mod)
 ```
 
 And calculate our D\^2
 
 ```{r}
-1 - 
+1 - (newt_mod$deviance / newt_mod$null.deviance)  #explains about 17% of the deviance. might be a bit higher if we throw in way more variables
+
+#in the end, you decide how many variables you want to include and whether or not this is a big enough jump in D^2 to justify all the extra variables!! 
 ```
 
 better than before!

@@ -603,7 +603,6 @@ gtcombine <- gtcombine |> sub_values(columns = treatments,
   
 
 
-
 gtsave(gtcombine, filename = "tukey_table.png")
 
 

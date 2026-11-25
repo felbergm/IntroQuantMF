@@ -11,14 +11,13 @@ lastmodified: Sept 10, 2026
 Chi-Square & goodness of fit are tests run on data with CATEGORICAL predictors AND CATEGORICAL responses. They are tests of association.
 
 ```{r}
-load(file = )
+load(file = "Demo Data Files/S4E2e.RData")
 ```
 
 ```{r}
 #install.packages("rstatix")
-library()
-library()
-
+library(tidyverse)
+library(rstatix)
 ```
 
 # Chi-squared analysis
@@ -51,8 +50,9 @@ Do these two heather species occur *more frequently* together or *less frequentl
 
 ```{r}
 
+heather  #our data is in a matrix / tabular format, NOT tidy but this is how we want it 
 
-#typeof(heather)
+typeof(heather) #its a list, which is sorta  a dataframe 
 ```
 
 What data are in the rows?
@@ -70,7 +70,7 @@ What are the replicates/what do the data represent?
 How many replicate quadrats were surveyed?
 
 ```{r}
-sum()
+sum(heather) #how many quadrats did we survey, 137 
 ```
 
 137 quadrats were surveyed to see if one, both, or neither species were present.
@@ -78,13 +78,13 @@ sum()
 How many quadrats had `Cal.vul` present?
 
 ```{r}
-colSums()
+colSums(heather)  #sums across columns
 ```
 
 How many quadrats had `Eri.cin` present?
 
 ```{r}
-
+rowSums(heather)  #sums across rows 
 ```
 
 #### Chi-square test (for matrix)
@@ -93,6 +93,8 @@ The built-in R function for chi-square tests works just fine when you're dealing
 
 ```{r}
 
+chisq.test(heather) #there is not a signfiicant assocation between these two types of heather
+
 ```
 
 #### Transforming between matrix and data frame
@@ -100,10 +102,10 @@ The built-in R function for chi-square tests works just fine when you're dealing
 Most of the data we work with however is in data frames! Let's transform our matrix to a data frame that keeps the essential information.
 
 ```{r}
-heather_df <-  |> 
-  mutate()
+heather_df <-  tibble(heather) |> 
+  mutate(Ercin = rownames(heather))  #if our heather matrix was a dataframe 
 
-
+#you need to have only numbers in your columns, select just the rows and columns that are relevant
 ```
 
 We still need to pass only the values to the chi-square function, so we practice selecting only the
@@ -113,28 +115,32 @@ We still need to pass only the values to the chi-square function, so we practice
 
 # heather_df[row, column]
 
-heather_df[]
+heather_df[ , 1:2] #used to select things without column name, selects by position
 ```
 
 #### Chi-square test (data frame)
 
 ```{r}
-TestResults <- chisq_test() # the function can only take number data- so we have to input only the counts and exclude the Treatment column
+TestResults <- chisq_test(heather_df [ , 1:2]) # the function can only take number data- so we have to input only the counts and exclude the Treatment column
 
+#chisq_test -> different version of test, more reliable with dataframe formats 
 
+TestResults   #slighly differnet format, but same numbers! 
 ```
 
 This gives us most of what we need! Remember that R automatically applies the Yates correction for 2x2 tables. What happens if we turn this off?
 
 ```{r}
 # to turn off Yates, we do: 
-chisq_test() 
+chisq_test(heather_df [ , 1:2], correct = FALSE) #oooo now our numbers have changed! now the test thinks its significant! false positive!!! good thing R will automatically do it for you 
 ```
 
 #### Pearson Residuals
 
 ```{r}
-PearResid <- 
+PearResid <- pearson_residuals(TestResults)
+
+PearResid  #these are the cell specific pearson residuals, remmeber we want something greater than 2 or less than -2. this means that its greater than 2 standard deviations from the mean 
 
 
 ```
@@ -146,23 +152,25 @@ Remember, we can tell if any specific combination of rows/columns significantly 
 One way to view this is with a column plot. To make this plot, we need to convert it to tidy data.
 
 ```{r}
-PlottablePearResid <-  |> 
-  |>  
+PlottablePearResid <- PearResid  |> 
+  as_tibble()|>   #converts matrix --> dataframe
   # PearResid comes out as a list - this converts it so that tidyverse can use it
-  
-  mutate()  |>  
+  mutate(Treatment = c("Eri.cin.present", "Eri.cin.absent"))  |>  #adds column back in for treatment
   # add the treatment names back in manually to a new column - make sure they're in the same order as the input contingency table
   
-  pivot_longer() # make it tidy to be easy to plot
+  pivot_longer(cols = 1:2, names_to = "SpeciesPresAbs", values_to = "Residuals") # make it tidy to be easy to plot
 
-
+PlottablePearResid
 ```
 
 ```{r}
-ggplot() +
+ggplot(PlottablePearResid) + 
+  aes(x = Treatment, y = Residuals, fill = SpeciesPresAbs) + 
+  geom_col(position = "dodge") + 
+  geom_hline(yintercept = c(-1.96,1.96), lty = "dotted") + 
   # add significance reference lines
   
-
+  labs(y = "Pearson Residuals") 
 ```
 
 ### Example 2: Bird and habitats
@@ -170,7 +178,7 @@ ggplot() +
 Adapt the method from the script above to run a chi-square test on whether birds associate with particular habitats.
 
 ```{r}
-bird
+bird  #birds and what habitats they associate with. lots of birds and lots of habitats 
 ```
 
 ```{r}
@@ -183,12 +191,25 @@ bird_df <-
 
 ```{r}
 
+chisq_test(bird)  #so simple and beautifiul wow. very significant too 
 ```
 
 #### Pearson Residuals/Plot:
 
 ```{r}
 
+bird_test <- chisq_test(bird)
+
+BirdPer <- pearson_residuals(bird_test)
+
+BirdPer |> as_tibble() |> 
+  mutate(Birds = rownames(bird)) |> 
+  pivot_longer(1:5, names_to = "Habitats", values_to = "Residuals") |> 
+  ggplot() + aes(x = Habitats, y = Residuals, fill = Birds) + 
+  geom_col(position = "dodge") + 
+  geom_hline(yintercept = c(-1.96,1.96), lty = "dotted") + 
+  # add significance reference lines
+  labs(y = "Pearson Residuals") 
 ```
 
 ### Example 3: Invertebrate Habitats
@@ -203,11 +224,27 @@ inv.hab
 
 ```{r}
 
+chisq_test(inv.hab) #mmmmm significant a lot 
+
+inv.chi <- (chisq_test(inv.hab)) #assigning it to a name
 ```
 
 #### Pearson Residuals/Plot:
 
 ```{r}
+inv.pear<- pearson_residuals(inv.chi)  #lower and beetle 
+
+inv.pear 
+
+inv.pear |> as_tibble() |> 
+  mutate(Insects = rownames(inv.hab)) |> 
+  pivot_longer(cols = 1:3, names_to = "PlantPart", values_to = "Residuals") |> 
+
+ggplot() + aes(x =  PlantPart , y = Residuals, fill = Insects) + 
+  geom_col(position = "dodge") + 
+  geom_hline(yintercept = c(-2, 2), lty = "dotted") + 
+  # add significance reference lines
+  labs(y = "Pearson Residuals") 
 
 ```
 
@@ -231,11 +268,16 @@ peas
 ```
 
 ```{r}
-Obs.values <- 
-ratio <-
+Obs.values <-  peas #our observed value
+ratio <- c(9, 3, 3, 1) #the ratio we would expected based on mendelian genetics 
 ```
 
 ```{r}
-my.good <- chisq.test()
+my.good <- chisq.test(Obs.values, p = ratio, rescale.p = TRUE)
+
+my.good
+
+#our observed values are the same as whats expected under mendelian genetics! 
+#our p value is big, so our null hypothesis can't be disproven. remember! the null hypothesis of this test is that the observed values match up with the expected values! 
 
 ```
